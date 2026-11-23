@@ -1,0 +1,56 @@
+// A requisição recebida pelas funções de rota.
+
+classe Requisicao {
+    // Método HTTP em maiúsculas: GET, POST etc.
+    metodo: texto
+    // Caminho sem os parâmetros de pesquisa, por exemplo "/api/clientes/1".
+    caminho: texto
+    // Alvo original da requisição, com os parâmetros de pesquisa.
+    url: texto
+    versao: texto
+    // Cabeçalhos com nomes em minúsculas.
+    cabecalhos: dicionário
+    // Corpo interpretado (JSON ou formulário) ou o texto do corpo.
+    corpo: qualquer
+    corpoTexto: texto
+    // Parâmetros do caminho da rota, como `id` em `rotas/clientes/[id].delegua`.
+    parametros: dicionário
+    // Parâmetros de pesquisa (`?a=1&b=2`).
+    parametrosPesquisa: dicionário
+    // Caminho da requisição (como `req.path` no Líquido original).
+    parametrosCaminho: texto
+    cookies: dicionário
+    // Conteúdo do token JWT válido, quando a autenticação está ativa.
+    usuario: qualquer
+    autenticado: lógico
+    // Caminho da rota que atendeu a requisição, como "/api/clientes/:id".
+    rota: texto
+
+    construtor() {
+        isto.metodo = "GET"
+        isto.caminho = "/"
+        isto.url = "/"
+        isto.versao = "HTTP/1.1"
+        isto.cabecalhos = {}
+        isto.corpo = {}
+        isto.corpoTexto = ""
+        isto.parametros = {}
+        isto.parametrosPesquisa = {}
+        isto.parametrosCaminho = "/"
+        isto.cookies = {}
+        isto.usuario = nulo
+        isto.autenticado = falso
+        isto.rota = ""
+    }
+
+    // Valor de um cabeçalho (sem diferenciar maiúsculas), ou nulo.
+    cabecalho(nome) {
+        var chave = ("" + nome).minusculo()
+        se (isto.cabecalhos.contem(chave)) { retorna isto.cabecalhos[chave] }
+        retorna nulo
+    }
+}
+
+funcao criar_requisicao() {
+    retorna Requisicao()
+}

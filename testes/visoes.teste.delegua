@@ -1,0 +1,85 @@
+importar { grupo, teste, afirmar } de "testes"
+
+var formatador = importar("../fontes/visoes/formatador_lmht.delegua")
+
+var base_mvc = "testes/exemplos/mvc"
+var base_leiaute = "testes/exemplos/leiaute"
+
+grupo("Resolução de visões", funcao() {
+    teste("raiz usa visoes/inicial.lmht", funcao() {
+        var resolucao = formatador.resolver_visao(base_mvc, "/")
+        afirmar.verdadeiro(resolucao["visao"].terminaCom("inicial.lmht"))
+    })
+
+    teste("diretório usa inicial.lmht", funcao() {
+        var resolucao = formatador.resolver_visao(base_mvc, "/mvc/lmht")
+        afirmar.verdadeiro(resolucao["visao"] != nulo)
+        afirmar.verdadeiro(resolucao["visao"].inclui("lmht"))
+    })
+
+    teste("parâmetro final usa detalhes.lmht", funcao() {
+        var resolucao = formatador.resolver_visao(base_mvc, "/clientes/:id")
+        afirmar.verdadeiro(resolucao["visao"].terminaCom("detalhes.lmht"))
+        var lista = formatador.resolver_visao(base_mvc, "/clientes")
+        afirmar.verdadeiro(lista["visao"].terminaCom("inicial.lmht"))
+    })
+
+    teste("informa visão inexistente", funcao() {
+        var resolucao = formatador.resolver_visao(base_mvc, "/nao/existe")
+        afirmar.igual(nulo, resolucao["visao"])
+        afirmar.verdadeiro(resolucao["tentados"].tamanho() > 0)
+    })
+})
+
+grupo("Formatação LMHT", funcao() {
+    teste("aplica modelo, parcial e FolEs", funcao() {
+        var itens = ["a", "b"]
+        var valores = { "nome": "Mundo", "itens": itens }
+        var resultado = formatador.formatar(base_mvc, "/", valores)
+        afirmar.igual("", resultado["erro"])
+        var html = resultado["resultado"]
+        afirmar.verdadeiro(html.inclui("<!DOCTYPE html>"))
+        afirmar.verdadeiro(html.inclui("<h1>Olá, Mundo!</h1>"))
+        afirmar.verdadeiro(html.inclui("<footer>Rodapé de Mundo</footer>"))
+        afirmar.verdadeiro(html.inclui("<p>1: b</p>"))
+        afirmar.verdadeiro(html.inclui("font-size: 12px;"))
+        afirmar.verdadeiro(html.inclui("<style>"))
+    })
+
+    teste("visão com parâmetro", funcao() {
+        var valores = { "id": "7" }
+        var resultado = formatador.formatar(base_mvc, "/clientes/:id", valores)
+        afirmar.igual("", resultado["erro"])
+        afirmar.verdadeiro(resultado["resultado"].inclui("<p>Cliente 7</p>"))
+    })
+
+    teste("compõe com leiaute base.lmht", funcao() {
+        var valores = {}
+        var resultado = formatador.formatar(base_leiaute, "/", valores)
+        afirmar.igual("", resultado["erro"])
+        var html = resultado["resultado"]
+        afirmar.verdadeiro(html.inclui("<title>Layout Raiz</title>"))
+        afirmar.verdadeiro(html.inclui("<nav>Nav Raiz</nav>"))
+        afirmar.verdadeiro(html.inclui("<h1>Pagina Inicial</h1>"))
+        afirmar.verdadeiro(html.inclui("font-size: 12px;"))
+    })
+
+    teste("leiaute mais próximo vence", funcao() {
+        var valores = {}
+        var resultado = formatador.formatar(base_leiaute, "/comlayoutproprio", valores)
+        afirmar.igual("", resultado["erro"])
+        afirmar.verdadeiro(resultado["resultado"].inclui("<h1>Pagina Filha</h1>"))
+    })
+
+    teste("leiaute sem <conteudo/> é erro", funcao() {
+        var valores = {}
+        var resultado = formatador.formatar(base_leiaute, "/semplaceholder", valores)
+        afirmar.verdadeiro(resultado["erro"].inclui("<conteudo/>"))
+    })
+
+    teste("visão inexistente é erro", funcao() {
+        var valores = {}
+        var resultado = formatador.formatar(base_mvc, "/nao/existe", valores)
+        afirmar.verdadeiro(resultado["erro"].inclui("não existe"))
+    })
+})

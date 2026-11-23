@@ -1,0 +1,55 @@
+importar { grupo, teste, afirmar } de "testes"
+
+var gerador = importar("../fontes/gerador/gerador_aplicacao.delegua")
+
+grupo("Gerador: caminhos de rota", funcao() {
+    teste("converte arquivos em caminhos", funcao() {
+        afirmar.igual("/", gerador.caminho_da_rota("rotas/inicial.delegua", "delegua"))
+        afirmar.igual("/teste", gerador.caminho_da_rota("rotas/teste.delegua", "delegua"))
+        afirmar.igual("/api/clientes/:id", gerador.caminho_da_rota("rotas/api/clientes/[id].delegua", "delegua"))
+        afirmar.igual("/mvc/lmht", gerador.caminho_da_rota("rotas/mvc/lmht/inicial.delegua", "delegua"))
+        afirmar.igual("/x", gerador.caminho_da_rota("rotas/x.pitu", "pituguês"))
+    })
+
+    teste("descobre arquivos de rota", funcao() {
+        var descoberta = gerador.descobrir_arquivos_rotas("testes/exemplos/projeto", "delegua")
+        var lista = descoberta["arquivos"]
+        afirmar.verdadeiro(lista.inclui("rotas/inicial.delegua"))
+        afirmar.verdadeiro(lista.inclui("rotas/api/clientes/[id].delegua"))
+        afirmar.verdadeiro(lista.inclui("rotas/mvc/lmht/inicial.delegua"))
+    })
+})
+
+grupo("Gerador: transformação de rotas", funcao() {
+    teste("lê decoradores e preserva linhas", funcao() {
+        var codigo = "@rest.documentacao(\n    sumario = \"Lista\",\n    etiquetas = [\"a\", \"b\"]\n)\n@rest.resposta(codigo = 200, descricao = \"Ok\")\nliquido.rotaGet(funcao(requisicao, resposta) {\n    resposta.json([])\n})"
+        var transformada = gerador.transformar_rota(codigo, "rotas/x.delegua")
+        afirmar.igual(0, transformada["erros"].tamanho())
+        afirmar.igual(8, transformada["corpo"].dividir("\n").tamanho())
+        afirmar.verdadeiro(transformada["corpo"].inclui("liquido.rotaGet("))
+        afirmar.falso(transformada["corpo"].inclui("@rest"))
+        var documentacoes = transformada["documentacoes"]
+        afirmar.igual(1, documentacoes.tamanho())
+        afirmar.igual("rotaGet", documentacoes[0]["metodo"])
+        afirmar.verdadeiro(documentacoes[0]["json"].inclui("\"sumario\":\"Lista\""))
+        afirmar.verdadeiro(documentacoes[0]["json"].inclui("\"codigo\":200"))
+    })
+
+    teste("move importações e ajusta caminhos", funcao() {
+        var codigo = "importar tudo como util de \"../comum/util.delegua\"\nimportar tudo como json de \"json\"\nliquido.rotaGet(funcao(r, s) { s.enviar(util.x()) })"
+        var transformada = gerador.transformar_rota(codigo, "rotas/api/x.delegua")
+        afirmar.igual(2, transformada["importacoes"].tamanho())
+        afirmar.igual("importar tudo como util de \"../rotas/comum/util.delegua\"", gerador.ajustar_importacao(transformada["importacoes"][0], "rotas/api/x.delegua"))
+        afirmar.igual("importar tudo como json de \"json\"", gerador.ajustar_importacao(transformada["importacoes"][1], "rotas/api/x.delegua"))
+    })
+
+    teste("gera o programa da aplicação", funcao() {
+        var resultado = gerador.gerar_programa("testes/exemplos/projeto", "delegua", "liquido")
+        afirmar.igual(0, resultado["erros"].tamanho())
+        var programa = resultado["programa"]
+        afirmar.verdadeiro(programa.inclui("importar tudo como liquido_nucleo de \"liquido\""))
+        afirmar.verdadeiro(programa.inclui("aplicacao_liquido.registrador(\"/api/clientes/:id\", \"rotas/api/clientes/[id].delegua\")"))
+        afirmar.verdadeiro(programa.inclui("aplicacao_liquido.documentarRota(\"rotaGet\", \"/artigos\""))
+        afirmar.verdadeiro(programa.inclui("liquido_nucleo.iniciar_aplicacao(aplicacao_liquido)"))
+    })
+})

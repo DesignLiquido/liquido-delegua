@@ -1,0 +1,15 @@
+<lmht>
+    <cabeça>
+        <titulo>Bem-vindo</titulo>
+        <estilo>
+            lmht {
+                tamanho-fonte: 12px;
+            }
+        </estilo>
+    </cabeça>
+    <corpo>
+        <titulo1>Olá, {{nome}}!</titulo1>
+        <parcial nome="rodape"/>
+        {{#cada itens}}<p>{{@indice}}: {{isto}}</p>{{/cada}}
+    </corpo>
+</lmht>

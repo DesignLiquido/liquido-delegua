@@ -1,0 +1,46 @@
+// Mapeamento de erros de execução para códigos do Líquido.
+// `palavra_chave` é comparada (em minúsculas) com a mensagem original do erro.
+// `mensagem`, quando não vazia, é a explicação amigável em português; a mensagem original
+// é preservada como detalhe técnico. LIQ99999 é o código de contingência.
+
+funcao lista_de_erros() {
+    var lista = [
+        { "codigo": "LIQ00001", "palavra_chave": "não encontrado", "mensagem": "" },
+        { "codigo": "LIQ00002", "palavra_chave": "não foi definida", "mensagem": "" },
+        { "codigo": "LIQ00003", "palavra_chave": "inesperado", "mensagem": "" },
+        { "codigo": "LIQ20001", "palavra_chave": "cannot read propert", "mensagem": "Tentativa de acessar uma propriedade de um valor nulo ou indefinido." },
+        { "codigo": "LIQ20001", "palavra_chave": "propriedade 'mensagem' de um valor nulo", "mensagem": "Tentativa de acessar uma propriedade de um valor nulo ou indefinido." },
+        { "codigo": "LIQ20002", "palavra_chave": "is not a function", "mensagem": "Tentativa de chamar como função algo que não é uma função." },
+        { "codigo": "LIQ20003", "palavra_chave": "is not defined", "mensagem": "Uso de um nome que não foi definido." },
+        { "codigo": "LIQ20003", "palavra_chave": "variável não definida", "mensagem": "Uso de um nome que não foi definido." },
+        { "codigo": "LIQ20004", "palavra_chave": "só pode chamar função ou classe", "mensagem": "" },
+        { "codigo": "LIQ10000", "palavra_chave": "sqlite_", "mensagem": "O banco de dados rejeitou o comando executado." },
+        { "codigo": "LIQ10000", "palavra_chave": "constraint failed", "mensagem": "O banco de dados rejeitou o comando por violação de restrição." }
+    ]
+    retorna lista
+}
+
+// Devolve { "codigo", "mensagem_amigavel" } para a mensagem de erro.
+funcao classificar(mensagem_erro) {
+    var texto_erro = ("" + mensagem_erro).minusculo()
+    para cada item em lista_de_erros() {
+        se (texto_erro.inclui(item["palavra_chave"])) {
+            retorna { "codigo": item["codigo"], "mensagem_amigavel": item["mensagem"] }
+        }
+    }
+    retorna { "codigo": "LIQ99999", "mensagem_amigavel": "" }
+}
+
+// Texto da linha de erro mostrada no console e na resposta.
+funcao descrever(mensagem_erro, arquivo_fonte) {
+    var classificacao: dicionário = classificar(mensagem_erro)
+    var localizacao = ""
+    se (arquivo_fonte != nulo e arquivo_fonte != "") { localizacao = " [Arquivo: " + arquivo_fonte + "]" }
+    var principal = mensagem_erro
+    var detalhe = ""
+    se (classificacao["mensagem_amigavel"] != "") {
+        principal = classificacao["mensagem_amigavel"]
+        detalhe = " (detalhe técnico: " + mensagem_erro + ")"
+    }
+    retorna classificacao["codigo"] + localizacao + ": " + principal + detalhe
+}

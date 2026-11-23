@@ -1,0 +1,68 @@
+{
+  "nome": "liquido",
+  "descricao": "Conjunto de ferramentas para desenvolvimento de aplicações para a internet 100% em português, escrito em Delégua.",
+  "versao": "0.1.0",
+  "realizacoes": ["node"],
+  "pontoDeEntrada": "fontes/liquido.delegua",
+  "dependencias": {
+    "lmht": "^0.1.0",
+    "foles": "^0.1.0"
+  },
+  "simbolos": [
+    {
+      "tipo": "funcao",
+      "nome": "criar_aplicacao",
+      "tipoRetorno": "Aplicacao",
+      "argumentos": [{ "nome": "diretorio_base", "tipo": "texto" }],
+      "documentacao": "Cria a aplicação do projeto, lendo configuracao.delprops."
+    },
+    {
+      "tipo": "funcao",
+      "nome": "iniciar_aplicacao",
+      "tipoRetorno": "lógico",
+      "argumentos": [{ "nome": "aplicacao", "tipo": "Aplicacao" }],
+      "documentacao": "Converte os estilos FolEs e inicia o servidor HTTP (ou simula requisições/gera documentação, conforme LIQUIDO_SIMULAR e LIQUIDO_DOCUMENTAR)."
+    },
+    {
+      "tipo": "funcao",
+      "nome": "gerar_aplicacao",
+      "tipoRetorno": "texto",
+      "argumentos": [
+        { "nome": "diretorio_base", "tipo": "texto" },
+        { "nome": "linguagem", "tipo": "texto" },
+        { "nome": "importacao_liquido", "tipo": "texto" }
+      ],
+      "documentacao": "Gera .liquido/aplicacao.delegua a partir de rotas/ e devolve o caminho gerado."
+    },
+    {
+      "tipo": "funcao",
+      "nome": "escrever_estilos",
+      "tipoRetorno": "número",
+      "argumentos": [
+        { "nome": "diretorio_base", "tipo": "texto" },
+        { "nome": "diretorio_destino", "tipo": "texto" }
+      ],
+      "documentacao": "Converte estilos/*.foles em CSS no diretório de destino."
+    },
+    {
+      "tipo": "funcao",
+      "nome": "codificar_jwt",
+      "tipoRetorno": "texto",
+      "argumentos": [
+        { "nome": "conteudo", "tipo": "dicionário" },
+        { "nome": "chave_secreta", "tipo": "texto" }
+      ],
+      "documentacao": "Gera um JSON Web Token assinado com HS256."
+    },
+    {
+      "tipo": "funcao",
+      "nome": "decodificar_jwt",
+      "tipoRetorno": "dicionário",
+      "argumentos": [
+        { "nome": "token", "tipo": "texto" },
+        { "nome": "chave_secreta", "tipo": "texto" }
+      ],
+      "documentacao": "Verifica um token HS256. Devolve { valido, conteudo, erro }."
+    }
+  ]
+}

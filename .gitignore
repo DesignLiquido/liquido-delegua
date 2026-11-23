@@ -1,0 +1,15 @@
+# Pacotes instalados pela Pacoteca (no desenvolvimento, junções para lmht-delegua e foles-delegua).
+pacotes/
+
+# Programas gerados pelo Líquido a partir de `rotas/`.
+.liquido/
+
+# Cobertura de testes.
+cobertura/
+coverage/
+
+CLAUDE.md
+
+# Gerados nos projetos de exemplo dos testes.
+testes/exemplos/*/publico/css/principal.css
+openapi.json

@@ -1,0 +1,16 @@
+[
+  { "metodo": "GET", "alvo": "/" },
+  { "metodo": "PROPFIND", "alvo": "/" },
+  { "metodo": "GET", "alvo": "/api/clientes/123" },
+  { "metodo": "POST", "alvo": "/api/clientes/9", "cabecalhos": { "Content-Type": "application/json" }, "corpo": "{}" },
+  { "metodo": "GET", "alvo": "/api/json" },
+  { "metodo": "GET", "alvo": "/api/empty" },
+  { "metodo": "GET", "alvo": "/api/xml" },
+  { "metodo": "GET", "alvo": "/mvc/lmht" },
+  { "metodo": "GET", "alvo": "/mvc" },
+  { "metodo": "DELETE", "alvo": "/middlewares?token=invalido" },
+  { "metodo": "PATCH", "alvo": "/middlewares" },
+  { "metodo": "GET", "alvo": "/artigos" },
+  { "metodo": "GET", "alvo": "/docs/openapi.json" },
+  { "metodo": "GET", "alvo": "/nao-existe", "cabecalhos": { "Accept": "application/json" } }
+]

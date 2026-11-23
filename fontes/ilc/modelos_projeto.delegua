@@ -1,0 +1,138 @@
+// Modelos de arquivos para `liquido novo` e `liquido gerar`.
+// Ficam embutidos como textos porque um programa em Delégua não conhece o diretório do
+// próprio pacote em tempo de execução.
+
+funcao configuracao(arquetipo) {
+    var descricao = "A minha aplicação é uma API REST."
+    se (arquetipo == "mvc") { descricao = "A minha aplicação é um MVC." }
+    retorna "// Configuração da aplicação em si.\n" +
+        "liquido.arquetipo = '" + arquetipo + "'\n" +
+        "liquido.linguagem = 'delégua'\n" +
+        "liquido.aplicacao.nome = 'Minha aplicação'\n" +
+        "liquido.aplicacao.versao = '0.0.0'\n" +
+        "liquido.aplicacao.descricao = '" + descricao + "'\n" +
+        "liquido.aplicacao.licenca.nome = 'MIT'\n" +
+        "liquido.aplicacao.licenca.url = 'https://github.com/DesignLiquido/liquido/LICENSE'\n" +
+        "\n" +
+        "// Configuração de arquivos estáticos\n" +
+        "liquido.roteador.diretorioEstatico = 'publico'\n" +
+        "\n" +
+        "// Configuração do roteador.\n" +
+        "liquido.roteador.porta = 3000\n" +
+        "liquido.roteador.cors = verdadeiro\n" +
+        "// CORS liberado para qualquer origem ('*') é adequado apenas para desenvolvimento.\n" +
+        "// Em produção, restrinja para o(s) domínio(s) da aplicação, separados por vírgula.\n" +
+        "liquido.roteador.origensCors = '*'\n" +
+        "liquido.roteador.bodyParser = verdadeiro\n" +
+        "liquido.roteador.morgan = verdadeiro\n" +
+        "liquido.roteador.cookieParser = verdadeiro\n" +
+        "liquido.roteador.passport = falso\n" +
+        "liquido.roteador.json = verdadeiro\n" +
+        "liquido.roteador.helmet = verdadeiro\n"
+}
+
+funcao rota_rest() {
+    retorna "@rest.documentacao(\n" +
+        "    sumario = \"Um exemplo de rota GET.\",\n" +
+        "    descricao = \"Uma descrição mais detalhada sobre como a rota GET funciona.\",\n" +
+        "    idOperacao = \"lerArtigos\",\n" +
+        "    etiquetas = [\"artigos\"]\n" +
+        ")\n" +
+        "@rest.resposta(\n" +
+        "    codigo = 200,\n" +
+        "    descricao = \"Devolvido com sucesso\",\n" +
+        "    formatos = [\"application/json\"]\n" +
+        ")\n" +
+        "liquido.rotaGet(funcao(requisicao, resposta) {\n" +
+        "    resposta.json([{\n" +
+        "        \"id\": 1,\n" +
+        "        \"titulo\": \"teste 1\",\n" +
+        "        \"descricao\": \"descricao 1\"\n" +
+        "    }])\n" +
+        "})\n" +
+        "\n" +
+        "liquido.rotaPost(funcao(requisicao, resposta) {\n" +
+        "    resposta.redirecionar(\"/artigos\")\n" +
+        "})\n"
+}
+
+funcao rota_mvc() {
+    retorna "liquido.rotaGet(funcao(requisicao, resposta) {\n" +
+        "    resposta.lmht({\n" +
+        "        \"nome\": \"mundo\"\n" +
+        "    })\n" +
+        "})\n"
+}
+
+funcao visao_inicial() {
+    retorna "<lmht>\n" +
+        "    <cabeça>\n" +
+        "        <meta nome=\"viewport\" conteudo=\"width=device-width, initial-scale=1.0\" />\n" +
+        "        <recurso tipo=\"stylesheet\" destino=\"/css/principal.css\" />\n" +
+        "        <titulo>Bem-vindo ao Liquido</titulo>\n" +
+        "    </cabeça>\n" +
+        "    <corpo>\n" +
+        "        <titulo1>Olá, {{nome}}!</titulo1>\n" +
+        "        <p>Sua aplicação MVC em Liquido está no ar.</p>\n" +
+        "        <p>Para começar:</p>\n" +
+        "        <p>— A rota desta página fica em rotas/inicial.delegua;</p>\n" +
+        "        <p>— Esta visão fica em visoes/inicial.lmht;</p>\n" +
+        "        <p>— O estilo fica em estilos/principal.foles, convertido automaticamente para publico/css/principal.css.</p>\n" +
+        "        <p>Boa jornada!</p>\n" +
+        "    </corpo>\n" +
+        "</lmht>\n"
+}
+
+funcao estilo_principal() {
+    retorna "corpo {\n" +
+        "    cor-fundo: #f4f6f8;\n" +
+        "    cor: #22303c;\n" +
+        "    margem: 48px;\n" +
+        "    tamanho-fonte: 18px;\n" +
+        "    altura-linha: 1.6;\n" +
+        "}\n" +
+        "\n" +
+        "titulo1 {\n" +
+        "    cor: #0e3a5f;\n" +
+        "}\n"
+}
+
+funcao leiame(nome, arquetipo) {
+    var tipo_projeto = "API REST"
+    se (arquetipo == "mvc") { tipo_projeto = "MVC (Modelo, Visão, Controlador)" }
+    retorna "# " + nome + "\n\n" +
+        "Aplicação " + tipo_projeto + " em [Líquido](https://github.com/DesignLiquido/liquido), escrita em Delégua.\n\n" +
+        "## Estrutura\n\n" +
+        "- `configuracao.delprops`: configurações da aplicação;\n" +
+        "- `rotas/`: uma rota por arquivo; `rotas/inicial.delegua` responde em `/`, `rotas/clientes/[id].delegua` em `/clientes/:id`;\n" +
+        "- `visoes/`: visões LMHT das rotas (MVC), com leiaute em `base.lmht` e parciais em `visoes/parciais/`;\n" +
+        "- `estilos/`: folhas de estilo FolEs, convertidas para `publico/css/`;\n" +
+        "- `publico/`: arquivos estáticos.\n\n" +
+        "## Execução\n\n" +
+        "```sh\nliquido servir\n```\n\n" +
+        "A aplicação fica disponível em http://localhost:3000. A documentação das rotas fica em http://localhost:3000/docs.\n"
+}
+
+// Rota gerada por `liquido gerar rota`, com um tratador por método.
+funcao rota_gerada(metodos, arquetipo) {
+    var texto_rota = ""
+    para cada metodo em metodos {
+        var nome = metodo.minusculo()
+        var nome_metodo = "rota" + nome.subtexto(0, 1).maiusculo() + nome.subtexto(1, nome.tamanho())
+        var corpo_rota = "    resposta.json({ \"mensagem\": \"" + metodo.maiusculo() + " ok\" })\n"
+        se (arquetipo == "mvc" e nome == "get") { corpo_rota = "    resposta.lmht({})\n" }
+        texto_rota = texto_rota + "liquido." + nome_metodo + "(funcao(requisicao, resposta) {\n" + corpo_rota + "})\n\n"
+    }
+    retorna texto_rota
+}
+
+funcao visao_gerada(titulo) {
+    retorna "<lmht>\n" +
+        "    <cabeça>\n" +
+        "        <titulo>" + titulo + "</titulo>\n" +
+        "    </cabeça>\n" +
+        "    <corpo>\n" +
+        "        <titulo1>" + titulo + "</titulo1>\n" +
+        "    </corpo>\n" +
+        "</lmht>\n"
+}

@@ -1,0 +1,57 @@
+importar { grupo, teste, afirmar } de "testes"
+
+var delprops = importar("../fontes/configuracao/delprops.delegua")
+var centro = importar("../fontes/configuracao/centro_configuracoes.delegua")
+
+grupo("DelProps", funcao() {
+    teste("analisa propriedades e valores", funcao() {
+        var texto_delprops = "// comentário\nliquido.arquetipo = 'mvc'\nliquido.roteador.porta = 8080 // porta\nliquido.roteador.cors = verdadeiro\nliquido.roteador.origensCors = ['https://a.com', \"https://b.com\"]\n\nliquido.aplicacao.nome = 'App // com barras'"
+        var resultado = delprops.analisar(texto_delprops)
+        afirmar.igual(0, resultado["erros"].tamanho())
+        var entradas = resultado["entradas"]
+        afirmar.igual(5, entradas.tamanho())
+        afirmar.igual("mvc", entradas[0]["dado"])
+        afirmar.igual(8080, entradas[1]["dado"])
+        afirmar.verdadeiro(entradas[2]["dado"])
+        afirmar.igual(2, entradas[3]["dado"].tamanho())
+        afirmar.igual("App // com barras", entradas[4]["dado"])
+        afirmar.igual("roteador", entradas[1]["caminho"][1])
+    })
+
+    teste("informa linhas inválidas", funcao() {
+        var resultado = delprops.analisar("liquido.a = \nsem igual\nliquido.b = 'ok'")
+        afirmar.igual(2, resultado["erros"].tamanho())
+        afirmar.igual(1, resultado["entradas"].tamanho())
+    })
+})
+
+grupo("Centro de configurações", funcao() {
+    teste("aplica valores sobre os padrões", funcao() {
+        var resultado = centro.configurar_por_texto("liquido.arquetipo = 'mvc'\nliquido.linguagem = 'pituguês'\nliquido.roteador.porta = 4000")
+        afirmar.igual(0, resultado["erros"].tamanho())
+        var liquido = resultado["configuracao"]["liquido"]
+        afirmar.igual("mvc", liquido["arquetipo"])
+        afirmar.igual("pitugues", liquido["linguagem"])
+        afirmar.igual(4000, liquido["roteador"]["porta"])
+        afirmar.igual("publico", liquido["roteador"]["diretorioEstatico"])
+        afirmar.igual("publico/css", liquido["estilos"]["diretorioBase"])
+    })
+
+    teste("recusa propriedades desconhecidas", funcao() {
+        var resultado = centro.configurar_por_texto("liquido.naoExiste = 1\nliquido.roteador = 2\nliquido.roteador.porta.x = 3")
+        afirmar.igual(3, resultado["erros"].tamanho())
+    })
+
+    teste("exige tecnologia e caminho do LinConEs juntos", funcao() {
+        var resultado = centro.configurar_por_texto("liquido.dados.lincones.tecnologia = 'sqlite'")
+        afirmar.igual(1, resultado["erros"].tamanho())
+        var completo = centro.configurar_por_texto("liquido.dados.lincones.tecnologia = 'sqlite'\nliquido.dados.lincones.caminho = ':memory:'")
+        afirmar.igual(0, completo["erros"].tamanho())
+    })
+
+    teste("usa padrões sem arquivo", funcao() {
+        var resultado = centro.carregar("diretorio-que-nao-existe")
+        afirmar.falso(resultado["encontrado"])
+        afirmar.igual("rest", resultado["configuracao"]["liquido"]["arquetipo"])
+    })
+})

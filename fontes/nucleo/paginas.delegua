@@ -1,0 +1,90 @@
+// Páginas HTML padrão do Líquido: rota não encontrada e erro de execução.
+importar tudo como textos de "../utilidades/texto.delegua"
+
+funcao estilo_comum(cor_topo, cor_borda_titulo) {
+    retorna "        :root {\n" +
+        "            --fundo: #f4f6f8;\n" +
+        "            --texto: #333;\n" +
+        "            --cor-topo: " + cor_topo + ";\n" +
+        "            --branco: #ffffff;\n" +
+        "            --borda: #e1e4e8;\n" +
+        "            --fundo-codigo: #2d2d2d;\n" +
+        "            --texto-codigo: #f8f8f2;\n" +
+        "        }\n" +
+        "        body {\n" +
+        "            font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;\n" +
+        "            background-color: var(--fundo);\n" +
+        "            color: var(--texto);\n" +
+        "            margin: 0;\n" +
+        "            padding: 0;\n" +
+        "            line-height: 1.6;\n" +
+        "        }\n" +
+        "        .cabecalho {\n" +
+        "            background-color: var(--cor-topo);\n" +
+        "            color: var(--branco);\n" +
+        "            padding: 40px 20px;\n" +
+        "            box-shadow: 0 4px 6px rgba(0,0,0,0.1);\n" +
+        "        }\n" +
+        "        .container { max-width: 1000px; margin: 0 auto; }\n" +
+        "        h1 { margin: 0; font-size: 2.2rem; font-weight: 600; }\n" +
+        "        h2 {\n" +
+        "            color: var(--cor-topo);\n" +
+        "            border-bottom: 2px solid " + cor_borda_titulo + ";\n" +
+        "            padding-bottom: 10px;\n" +
+        "            margin-top: 40px;\n" +
+        "            font-size: 1.5rem;\n" +
+        "        }\n" +
+        "        .conteudo { padding: 20px; }\n" +
+        "        pre {\n" +
+        "            background-color: var(--fundo-codigo);\n" +
+        "            color: var(--texto-codigo);\n" +
+        "            padding: 15px;\n" +
+        "            border-radius: 6px;\n" +
+        "            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;\n" +
+        "            font-size: 14px;\n" +
+        "            margin: 0;\n" +
+        "            white-space: pre-wrap;\n" +
+        "            word-wrap: break-word;\n" +
+        "        }\n" +
+        "        .caixa {\n" +
+        "            background: var(--branco);\n" +
+        "            border: 1px solid var(--borda);\n" +
+        "            border-radius: 8px;\n" +
+        "            padding: 20px;\n" +
+        "            margin-top: 20px;\n" +
+        "            box-shadow: 0 2px 4px rgba(0,0,0,0.05);\n" +
+        "        }\n" +
+        "        ul.pilha { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 15px; }\n"
+}
+
+funcao montar_pagina(titulo_pagina, titulo, conteudo, cor_topo, cor_borda_titulo) {
+    retorna "<!DOCTYPE html>\n<html lang=\"pt\">\n<head>\n" +
+        "    <meta charset=\"UTF-8\">\n" +
+        "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
+        "    <title>" + titulo_pagina + "</title>\n" +
+        "    <style>\n" + estilo_comum(cor_topo, cor_borda_titulo) + "    </style>\n" +
+        "</head>\n<body>\n" +
+        "    <div class=\"cabecalho\"><div class=\"container\"><h1>" + titulo + "</h1></div></div>\n" +
+        "    <div class=\"container conteudo\">\n" + conteudo + "    </div>\n" +
+        "</body>\n</html>"
+}
+
+funcao pagina_nao_encontrada(metodo, caminho) {
+    var conteudo = "        <h2>Detalhes da requisição</h2>\n" +
+        "        <pre>" + textos.escapar_html(metodo) + " " + textos.escapar_html(caminho) + "</pre>\n" +
+        "        <div class=\"caixa\">\n" +
+        "            <strong>Dica:</strong> Verifique se o endereço digitado está correto.\n" +
+        "            Utilize a ferramenta de documentação em <a href=\"/docs\">/docs</a>\n" +
+        "            para consultar as rotas disponíveis.\n" +
+        "        </div>\n"
+    retorna montar_pagina("Página não encontrada — Líquido", "Página não encontrada", conteudo, "#4a90d9", "#cce0ff")
+}
+
+funcao pagina_erro(linhas_erro) {
+    var itens = ""
+    para cada linha em linhas_erro {
+        itens = itens + "            <li class=\"caixa\"><pre>" + textos.escapar_html(linha) + "</pre></li>\n"
+    }
+    var conteudo = "        <h2>Pilha de Execução</h2>\n        <ul class=\"pilha\">\n" + itens + "        </ul>\n"
+    retorna montar_pagina("Erro de Execução - Líquido", "Ocorreu um erro", conteudo, "#dc3545", "#ffcccc")
+}

@@ -1,0 +1,38 @@
+// Leitura do cabeçalho Cookie e montagem de Set-Cookie.
+importar tudo como url de "./url.delegua"
+importar tudo como textos de "../utilidades/texto.delegua"
+
+funcao analisar_cookies(cabecalho_cookie) {
+    var resultado = {}
+    se (cabecalho_cookie == nulo ou cabecalho_cookie == "") { retorna resultado }
+    para cada par em ("" + cabecalho_cookie).dividir(";") {
+        var partes = textos.dividir_primeira(par.aparar(), "=")
+        se (partes.tamanho() < 2 ou partes[0] == "") { continua }
+        var valor_cookie = partes[1].aparar()
+        se (textos.comeca_com(valor_cookie, "\"") e textos.termina_com(valor_cookie, "\"") e valor_cookie.tamanho() >= 2) {
+            valor_cookie = valor_cookie.subtexto(1, valor_cookie.tamanho() - 1)
+        }
+        se (nao resultado.contem(partes[0])) {
+            resultado[partes[0]] = url.decodificar(valor_cookie)
+        }
+    }
+    retorna resultado
+}
+
+// Opções aceitas (nomes em português): caminho, dominio, idadeMaxima (segundos), expira (texto HTTP-date),
+// seguro, somenteHttp, mesmoSitio ("Strict", "Lax", "None").
+funcao montar_set_cookie(nome, valor_cookie, opcoes) {
+    var partes = [nome + "=" + url.codificar(valor_cookie)]
+    var caminho = "/"
+    se (opcoes != nulo e opcoes.contem("caminho")) { caminho = opcoes["caminho"] }
+    partes.adicionar("Path=" + caminho)
+    se (opcoes != nulo) {
+        se (opcoes.contem("dominio")) { partes.adicionar("Domain=" + opcoes["dominio"]) }
+        se (opcoes.contem("idadeMaxima")) { partes.adicionar("Max-Age=" + texto(opcoes["idadeMaxima"])) }
+        se (opcoes.contem("expira")) { partes.adicionar("Expires=" + opcoes["expira"]) }
+        se (opcoes.contem("somenteHttp") e opcoes["somenteHttp"]) { partes.adicionar("HttpOnly") }
+        se (opcoes.contem("seguro") e opcoes["seguro"]) { partes.adicionar("Secure") }
+        se (opcoes.contem("mesmoSitio")) { partes.adicionar("SameSite=" + opcoes["mesmoSitio"]) }
+    }
+    retorna partes.juntar("; ")
+}

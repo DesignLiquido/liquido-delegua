@@ -1,0 +1,7 @@
+liquido.arquetipo = 'mvc'
+liquido.roteador.cors = verdadeiro
+liquido.roteador.origensCors = 'https://exemplo.com.br, https://admin.exemplo.com.br'
+liquido.roteador.helmet = verdadeiro
+liquido.autenticacao.tecnologia = 'jwt'
+liquido.aplicacao.nome = 'Aplicação de teste'
+liquido.aplicacao.versao = '1.2.3'

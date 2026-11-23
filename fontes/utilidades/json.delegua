@@ -1,0 +1,256 @@
+// Serialização e análise de JSON escritas em Delégua.
+// O módulo `json` tem interfaces diferentes nas realizações node e llvm, então o Líquido
+// usa esta implementação própria, que funciona igual em todas.
+
+funcao eh_vetor(valor) {
+    var tipo_valor = tipo de valor
+    retorna tipo_valor == "vetor" ou ("" + tipo_valor).terminaCom("[]")
+}
+
+funcao eh_dicionario(valor) {
+    var tipo_valor = tipo de valor
+    retorna tipo_valor == "dicionário" ou tipo_valor == "dicionario"
+}
+
+funcao escapar_texto_json(valor) {
+    var resultado = "\""
+    para cada caractere em "" + valor {
+        se (caractere == "\"") { resultado = resultado + "\\\"" }
+        senao se (caractere == "\\") { resultado = resultado + "\\\\" }
+        senao se (caractere == "\n") { resultado = resultado + "\\n" }
+        senao se (caractere == "\r") { resultado = resultado + "\\r" }
+        senao se (caractere == "\t") { resultado = resultado + "\\t" }
+        senao { resultado = resultado + caractere }
+    }
+    retorna resultado + "\""
+}
+
+funcao serializar(valor) {
+    se (valor == nulo) { retorna "null" }
+    var tipo_valor = tipo de valor
+    se (tipo_valor == "lógico" ou tipo_valor == "logico") {
+        se (valor) { retorna "true" }
+        retorna "false"
+    }
+    se (tipo_valor == "número" ou tipo_valor == "numero" ou tipo_valor == "inteiro" ou tipo_valor == "real") {
+        retorna texto(valor)
+    }
+    se (tipo_valor == "texto") { retorna escapar_texto_json(valor) }
+    se (eh_vetor(valor)) {
+        // Laços `para cada` terminam cedo quando o corpo faz uma chamada recursiva;
+        // por isso os laços recursivos deste módulo usam índices.
+        var partes = []
+        para (var i = 0; i < valor.tamanho(); i = i + 1) {
+            var item = valor[i]
+            partes.adicionar(serializar(item))
+        }
+        retorna "[" + partes.juntar(",") + "]"
+    }
+    se (eh_dicionario(valor)) {
+        var partes_objeto = []
+        var chaves = valor.chaves()
+        para (var j = 0; j < chaves.tamanho(); j = j + 1) {
+            var chave = chaves[j]
+            var valor_chave = valor[chave]
+            partes_objeto.adicionar(escapar_texto_json(chave) + ":" + serializar(valor_chave))
+        }
+        retorna "{" + partes_objeto.juntar(",") + "}"
+    }
+    retorna escapar_texto_json(texto(valor))
+}
+
+// ── Análise ──
+// O analisador percorre um estado { "texto", "posicao", "erro", "resultado" }.
+// Cada função de análise grava o valor lido em estado["resultado"] em vez de devolvê-lo:
+// em Delégua, devolver um dicionário com a chave "valor" faz o interpretador desembrulhá-lo,
+// e dados de usuário podem ter essa chave.
+//
+// Funções em Delégua só enxergam funções declaradas antes delas. Objetos e vetores chamam
+// `analisar_valor`, declarada depois, por meio da tabela `adiante`, preenchida no fim do módulo.
+var adiante = {}
+
+funcao pular_espacos(estado) {
+    var codigo = estado["texto"]
+    enquanto (estado["posicao"] < codigo.tamanho()) {
+        var c = codigo[estado["posicao"]]
+        se (c == " " ou c == "\n" ou c == "\r" ou c == "\t") {
+            estado["posicao"] = estado["posicao"] + 1
+        } senao {
+            sustar
+        }
+    }
+}
+
+funcao falhar_analise(estado, mensagem) {
+    se (estado["erro"] == "") {
+        estado["erro"] = mensagem + " (posição " + texto(estado["posicao"]) + ")"
+    }
+    estado["resultado"] = nulo
+}
+
+funcao analisar_texto_json(estado) {
+    var codigo = estado["texto"]
+    estado["posicao"] = estado["posicao"] + 1
+    var resultado = ""
+    enquanto (estado["posicao"] < codigo.tamanho()) {
+        var c = codigo[estado["posicao"]]
+        se (c == "\"") {
+            estado["posicao"] = estado["posicao"] + 1
+            estado["resultado"] = resultado
+            retorna
+        }
+        se (c == "\\") {
+            estado["posicao"] = estado["posicao"] + 1
+            var escape = codigo[estado["posicao"]]
+            se (escape == "n") { resultado = resultado + "\n" }
+            senao se (escape == "r") { resultado = resultado + "\r" }
+            senao se (escape == "t") { resultado = resultado + "\t" }
+            senao se (escape == "b" ou escape == "f") { resultado = resultado + "" }
+            senao se (escape == "u") {
+                // Sem conversão de código para caractere em Delégua: mantém a sequência.
+                resultado = resultado + "\u" + codigo.subtexto(estado["posicao"] + 1, estado["posicao"] + 5)
+                estado["posicao"] = estado["posicao"] + 4
+            }
+            senao { resultado = resultado + escape }
+            estado["posicao"] = estado["posicao"] + 1
+            continua
+        }
+        resultado = resultado + c
+        estado["posicao"] = estado["posicao"] + 1
+    }
+    falhar_analise(estado, "Texto JSON não terminado")
+}
+
+funcao analisar_numero_json(estado) {
+    var codigo = estado["texto"]
+    var inicio = estado["posicao"]
+    enquanto (estado["posicao"] < codigo.tamanho() e "-+0123456789.eE".inclui(codigo[estado["posicao"]])) {
+        estado["posicao"] = estado["posicao"] + 1
+    }
+    var trecho = codigo.subtexto(inicio, estado["posicao"])
+    se (trecho == "" ou trecho == "-") {
+        falhar_analise(estado, "Número JSON inválido")
+        retorna
+    }
+    estado["resultado"] = numero(trecho)
+}
+
+funcao consumir_palavra(estado, palavra) {
+    var codigo = estado["texto"]
+    se (codigo.subtexto(estado["posicao"], estado["posicao"] + palavra.tamanho()) == palavra) {
+        estado["posicao"] = estado["posicao"] + palavra.tamanho()
+        retorna verdadeiro
+    }
+    retorna falso
+}
+
+funcao analisar_objeto_json(estado) {
+    var codigo = estado["texto"]
+    estado["posicao"] = estado["posicao"] + 1
+    var objeto = {}
+    pular_espacos(estado)
+    se (estado["posicao"] < codigo.tamanho() e codigo[estado["posicao"]] == "}") {
+        estado["posicao"] = estado["posicao"] + 1
+        estado["resultado"] = objeto
+        retorna
+    }
+    enquanto (estado["erro"] == "") {
+        pular_espacos(estado)
+        se (estado["posicao"] >= codigo.tamanho() ou codigo[estado["posicao"]] != "\"") {
+            falhar_analise(estado, "Esperada chave de objeto JSON")
+            retorna
+        }
+        analisar_texto_json(estado)
+        var chave = estado["resultado"]
+        pular_espacos(estado)
+        se (estado["posicao"] >= codigo.tamanho() ou codigo[estado["posicao"]] != ":") {
+            falhar_analise(estado, "Esperado ':' em objeto JSON")
+            retorna
+        }
+        estado["posicao"] = estado["posicao"] + 1
+        adiante["analisar_valor"](estado)
+        se (estado["erro"] != "") { retorna }
+        // Copiar por uma variável local evita guardar o invólucro interno da variável.
+        var valor_lido = estado["resultado"]
+        objeto[chave] = valor_lido
+        pular_espacos(estado)
+        se (estado["posicao"] >= codigo.tamanho()) {
+            falhar_analise(estado, "Objeto JSON não terminado")
+            retorna
+        }
+        var separador = codigo[estado["posicao"]]
+        estado["posicao"] = estado["posicao"] + 1
+        se (separador == "}") {
+            estado["resultado"] = objeto
+            retorna
+        }
+        se (separador != ",") {
+            falhar_analise(estado, "Esperado ',' ou '}' em objeto JSON")
+            retorna
+        }
+    }
+}
+
+funcao analisar_vetor_json(estado) {
+    var codigo = estado["texto"]
+    estado["posicao"] = estado["posicao"] + 1
+    var itens = []
+    pular_espacos(estado)
+    se (estado["posicao"] < codigo.tamanho() e codigo[estado["posicao"]] == "]") {
+        estado["posicao"] = estado["posicao"] + 1
+        estado["resultado"] = itens
+        retorna
+    }
+    enquanto (estado["erro"] == "") {
+        adiante["analisar_valor"](estado)
+        se (estado["erro"] != "") { retorna }
+        var item_lido = estado["resultado"]
+        itens.adicionar(item_lido)
+        pular_espacos(estado)
+        se (estado["posicao"] >= codigo.tamanho()) {
+            falhar_analise(estado, "Vetor JSON não terminado")
+            retorna
+        }
+        var separador = codigo[estado["posicao"]]
+        estado["posicao"] = estado["posicao"] + 1
+        se (separador == "]") {
+            estado["resultado"] = itens
+            retorna
+        }
+        se (separador != ",") {
+            falhar_analise(estado, "Esperado ',' ou ']' em vetor JSON")
+            retorna
+        }
+    }
+}
+
+funcao analisar_valor(estado) {
+    pular_espacos(estado)
+    var codigo = estado["texto"]
+    se (estado["posicao"] >= codigo.tamanho()) {
+        falhar_analise(estado, "Fim inesperado do JSON")
+        retorna
+    }
+    var c = codigo[estado["posicao"]]
+    se (c == "{") { analisar_objeto_json(estado) }
+    senao se (c == "[") { analisar_vetor_json(estado) }
+    senao se (c == "\"") { analisar_texto_json(estado) }
+    senao se (consumir_palavra(estado, "true")) { estado["resultado"] = verdadeiro }
+    senao se (consumir_palavra(estado, "false")) { estado["resultado"] = falso }
+    senao se (consumir_palavra(estado, "null")) { estado["resultado"] = nulo }
+    senao se ("-0123456789".inclui(c)) { analisar_numero_json(estado) }
+    senao { falhar_analise(estado, "Caractere inesperado no JSON: '" + c + "'") }
+}
+
+adiante["analisar_valor"] = analisar_valor
+
+// Analisa um texto JSON. Devolve { "resultado": ..., "erro": "" }; `erro` não vazio indica falha.
+funcao analisar(texto_json) {
+    var estado = { "texto": "" + texto_json, "posicao": 0, "erro": "", "resultado": nulo }
+    analisar_valor(estado)
+    pular_espacos(estado)
+    se (estado["erro"] == "" e estado["posicao"] < estado["texto"].tamanho()) {
+        falhar_analise(estado, "Conteúdo após o fim do JSON")
+    }
+    retorna { "resultado": estado["resultado"], "erro": estado["erro"] }
+}

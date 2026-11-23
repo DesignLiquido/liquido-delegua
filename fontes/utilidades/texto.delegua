@@ -1,0 +1,94 @@
+// Utilidades de texto usadas por todo o Líquido.
+// As primitivas de texto de Delégua cobrem o básico; aqui ficam as operações que faltam
+// (substituição de todas as ocorrências, prefixos, repetição etc.).
+
+funcao eh_espaco(caractere) {
+    retorna caractere == " " ou caractere == "\n" ou caractere == "\r" ou caractere == "\t"
+}
+
+funcao comeca_com(texto_original, prefixo) {
+    var texto_base = "" + texto_original
+    var inicio = "" + prefixo
+    se (inicio.tamanho() > texto_base.tamanho()) { retorna falso }
+    retorna texto_base.subtexto(0, inicio.tamanho()) == inicio
+}
+
+funcao termina_com(texto_original, sufixo) {
+    var texto_base = "" + texto_original
+    var fim = "" + sufixo
+    se (fim.tamanho() > texto_base.tamanho()) { retorna falso }
+    retorna texto_base.subtexto(texto_base.tamanho() - fim.tamanho(), texto_base.tamanho()) == fim
+}
+
+// `substituir` das primitivas troca apenas a primeira ocorrência.
+funcao substituir_todos(texto_original, procurado, substituto) {
+    var texto_base = "" + texto_original
+    se (procurado == "") { retorna texto_base }
+    retorna texto_base.dividir(procurado).juntar(substituto)
+}
+
+funcao repetir(texto_original, quantidade) {
+    var resultado = ""
+    para (var i = 0; i < quantidade; i = i + 1) {
+        resultado = resultado + texto_original
+    }
+    retorna resultado
+}
+
+// Divide apenas na primeira ocorrência do separador: "a=b=c" -> ["a", "b=c"].
+funcao dividir_primeira(texto_original, separador) {
+    var texto_base = "" + texto_original
+    var posicao = texto_base.encontrar(separador)
+    se (posicao < 0) { retorna [texto_base] }
+    retorna [
+        texto_base.subtexto(0, posicao),
+        texto_base.subtexto(posicao + separador.tamanho(), texto_base.tamanho())
+    ]
+}
+
+// Posição da próxima ocorrência de `procurado` a partir de `inicio`, ou -1.
+funcao encontrar_a_partir(texto_original, procurado, inicio) {
+    var texto_base = "" + texto_original
+    se (inicio >= texto_base.tamanho()) { retorna -1 }
+    var resto = texto_base.subtexto(inicio, texto_base.tamanho())
+    var posicao = resto.encontrar(procurado)
+    se (posicao < 0) { retorna -1 }
+    retorna inicio + posicao
+}
+
+// Remove acentos comuns do português (para normalizar nomes como "pituguês").
+funcao remover_acentos(texto_original) {
+    var com_acento = "áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ"
+    var sem_acento = "aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC"
+    var resultado = ""
+    para cada caractere em "" + texto_original {
+        var posicao = com_acento.encontrar(caractere)
+        se (posicao >= 0) { resultado = resultado + sem_acento[posicao] }
+        senao { resultado = resultado + caractere }
+    }
+    retorna resultado
+}
+
+// Escapa texto para inclusão segura em HTML.
+funcao escapar_html(valor) {
+    var resultado = ""
+    para cada caractere em "" + valor {
+        se (caractere == "&") { resultado = resultado + "&amp;" }
+        senao se (caractere == "<") { resultado = resultado + "&lt;" }
+        senao se (caractere == ">") { resultado = resultado + "&gt;" }
+        senao se (caractere == "\"") { resultado = resultado + "&quot;" }
+        senao se (caractere == "'") { resultado = resultado + "&#x27;" }
+        senao se (caractere == "`") { resultado = resultado + "&#x60;" }
+        senao se (caractere == "=") { resultado = resultado + "&#x3D;" }
+        senao { resultado = resultado + caractere }
+    }
+    retorna resultado
+}
+
+funcao eh_digito(caractere) {
+    retorna "0123456789".inclui(caractere) e caractere != ""
+}
+
+funcao eh_letra_ou_digito(caractere) {
+    retorna "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".inclui(caractere) e caractere != ""
+}

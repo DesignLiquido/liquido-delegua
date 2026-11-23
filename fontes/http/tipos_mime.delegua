@@ -1,0 +1,60 @@
+// Tipos de conteúdo por extensão de arquivo, para arquivos estáticos.
+
+var tipos_por_extensao = {
+    "html": "text/html; charset=utf-8",
+    "htm": "text/html; charset=utf-8",
+    "css": "text/css; charset=utf-8",
+    "js": "text/javascript; charset=utf-8",
+    "mjs": "text/javascript; charset=utf-8",
+    "json": "application/json; charset=utf-8",
+    "map": "application/json; charset=utf-8",
+    "txt": "text/plain; charset=utf-8",
+    "md": "text/markdown; charset=utf-8",
+    "csv": "text/csv; charset=utf-8",
+    "xml": "application/xml; charset=utf-8",
+    "svg": "image/svg+xml",
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "gif": "image/gif",
+    "webp": "image/webp",
+    "ico": "image/x-icon",
+    "avif": "image/avif",
+    "woff": "font/woff",
+    "woff2": "font/woff2",
+    "ttf": "font/ttf",
+    "otf": "font/otf",
+    "pdf": "application/pdf",
+    "zip": "application/zip",
+    "wasm": "application/wasm",
+    "mp3": "audio/mpeg",
+    "mp4": "video/mp4",
+    "webm": "video/webm",
+    "ogg": "audio/ogg",
+    "wav": "audio/wav"
+}
+
+// Tipos cujo conteúdo é texto (UTF-8) e pode ser lido com `arquivos.lerTexto`.
+var tipos_texto = ["html", "htm", "css", "js", "mjs", "json", "map", "txt", "md", "csv", "xml", "svg"]
+
+funcao extensao_arquivo(caminho) {
+    var texto_caminho = "" + caminho
+    var posicao = -1
+    para (var i = 0; i < texto_caminho.tamanho(); i = i + 1) {
+        var c = texto_caminho[i]
+        se (c == ".") { posicao = i }
+        se (c == "/" ou c == "\\") { posicao = -1 }
+    }
+    se (posicao < 0) { retorna "" }
+    retorna texto_caminho.subtexto(posicao + 1, texto_caminho.tamanho()).minusculo()
+}
+
+funcao tipo_por_caminho(caminho) {
+    var ext = extensao_arquivo(caminho)
+    se (tipos_por_extensao.contem(ext)) { retorna tipos_por_extensao[ext] }
+    retorna "application/octet-stream"
+}
+
+funcao eh_texto(caminho) {
+    retorna tipos_texto.inclui(extensao_arquivo(caminho))
+}

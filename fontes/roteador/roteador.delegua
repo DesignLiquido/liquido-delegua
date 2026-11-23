@@ -1,0 +1,142 @@
+// Roteador: registra rotas por método e caminho (com parâmetros `:nome`) e resolve requisições.
+importar tudo como url de "../http/url.delegua"
+
+var metodos_rota = {
+    "rotaGet": "GET",
+    "rotaPost": "POST",
+    "rotaPut": "PUT",
+    "rotaDelete": "DELETE",
+    "rotaPatch": "PATCH",
+    "rotaCopy": "COPY",
+    "rotaHead": "HEAD",
+    "rotaOptions": "OPTIONS",
+    "rotaPurge": "PURGE",
+    "rotaLock": "LOCK",
+    "rotaUnlock": "UNLOCK",
+    "rotaPropfind": "PROPFIND",
+    "rotaLink": "LINK",
+    "rotaUnlink": "UNLINK",
+    "rotaView": "VIEW"
+}
+
+funcao segmentos_padrao(caminho_rota) {
+    var segmentos = []
+    para cada segmento em ("" + caminho_rota).dividir("/") {
+        se (segmento != "") { segmentos.adicionar(segmento) }
+    }
+    retorna segmentos
+}
+
+// Compara os segmentos de uma rota com os de um caminho.
+// Devolve { "encontrou", "parametros", "estaticos" }; `estaticos` conta segmentos fixos
+// e serve para preferir `/clientes/novo` a `/clientes/:id`.
+funcao corresponder(segmentos_rota, segmentos_caminho) {
+    var parametros = {}
+    se (segmentos_rota.tamanho() != segmentos_caminho.tamanho()) {
+        retorna { "encontrou": falso, "parametros": parametros, "estaticos": 0 }
+    }
+    var estaticos = 0
+    para (var i = 0; i < segmentos_rota.tamanho(); i = i + 1) {
+        var esperado = segmentos_rota[i]
+        var recebido = segmentos_caminho[i]
+        se (esperado.tamanho() > 1 e esperado[0] == ":") {
+            parametros[esperado.subtexto(1, esperado.tamanho())] = recebido
+        } senao {
+            se (esperado != recebido) {
+                retorna { "encontrou": falso, "parametros": parametros, "estaticos": 0 }
+            }
+            estaticos = estaticos + 1
+        }
+    }
+    retorna { "encontrou": verdadeiro, "parametros": parametros, "estaticos": estaticos }
+}
+
+classe Roteador {
+    rotas: vetor
+
+    construtor() {
+        isto.rotas = []
+    }
+
+    // `funcoes`: middlewares seguidos do tratador final.
+    // Devolve falso (e não registra) se o método já existe para o caminho.
+    registrar(metodo, caminho, funcoes, arquivo) {
+        var metodo_normalizado = ("" + metodo).maiusculo()
+        var caminho_normalizado = url.normalizar_caminho(caminho)
+        para cada existente em isto.rotas {
+            se (existente["metodo"] == metodo_normalizado e existente["caminho"] == caminho_normalizado) {
+                retorna falso
+            }
+        }
+        var segmentos = segmentos_padrao(caminho_normalizado)
+        var rota = {
+            "metodo": metodo_normalizado,
+            "caminho": caminho_normalizado,
+            "segmentos": segmentos,
+            "funcoes": funcoes,
+            "arquivo": arquivo
+        }
+        isto.rotas.adicionar(rota)
+        retorna verdadeiro
+    }
+
+    // Resolve uma requisição. `situacao`: "encontrada", "metodo_nao_permitido", "nao_encontrada" ou "caminho_invalido".
+    resolver(metodo, caminho) {
+        var metodo_normalizado = ("" + metodo).maiusculo()
+        var segmentos_caminho = url.segmentos_caminho(caminho)
+        var sem_parametros = {}
+        var metodos_vazios = []
+        se (segmentos_caminho == nulo) {
+            retorna { "situacao": "caminho_invalido", "rota": nulo, "parametros": sem_parametros, "metodos": metodos_vazios }
+        }
+
+        var melhor = nulo
+        var melhor_parametros = {}
+        var melhor_estaticos = -1
+        var melhor_get = nulo
+        var melhor_get_parametros = {}
+        var melhor_get_estaticos = -1
+        var metodos_caminho = []
+
+        para cada rota em isto.rotas {
+            var correspondencia: dicionário = corresponder(rota["segmentos"], segmentos_caminho)
+            se (nao correspondencia["encontrou"]) { continua }
+            se (nao metodos_caminho.inclui(rota["metodo"])) { metodos_caminho.adicionar(rota["metodo"]) }
+            var estaticos = correspondencia["estaticos"]
+            se (rota["metodo"] == metodo_normalizado e estaticos > melhor_estaticos) {
+                melhor = rota
+                melhor_parametros = correspondencia["parametros"]
+                melhor_estaticos = estaticos
+            }
+            se (rota["metodo"] == "GET" e estaticos > melhor_get_estaticos) {
+                melhor_get = rota
+                melhor_get_parametros = correspondencia["parametros"]
+                melhor_get_estaticos = estaticos
+            }
+        }
+
+        // HEAD usa a rota GET quando não há rota HEAD própria, como no Express.
+        se (melhor == nulo e metodo_normalizado == "HEAD" e melhor_get != nulo) {
+            melhor = melhor_get
+            melhor_parametros = melhor_get_parametros
+        }
+
+        se (melhor != nulo) {
+            retorna { "situacao": "encontrada", "rota": melhor, "parametros": melhor_parametros, "metodos": metodos_caminho }
+        }
+        se (metodos_caminho.tamanho() > 0) {
+            se (metodos_caminho.inclui("GET") e nao metodos_caminho.inclui("HEAD")) { metodos_caminho.adicionar("HEAD") }
+            retorna { "situacao": "metodo_nao_permitido", "rota": nulo, "parametros": sem_parametros, "metodos": metodos_caminho }
+        }
+        retorna { "situacao": "nao_encontrada", "rota": nulo, "parametros": sem_parametros, "metodos": metodos_vazios }
+    }
+}
+
+funcao criar_roteador() {
+    retorna Roteador()
+}
+
+funcao metodo_de_registro(nome_metodo_rota) {
+    se (metodos_rota.contem(nome_metodo_rota)) { retorna metodos_rota[nome_metodo_rota] }
+    retorna nulo
+}

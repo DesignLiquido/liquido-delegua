@@ -1,0 +1,260 @@
+// Formatação de visões LMHT: resolve a visão da rota, aplica o leiaute (`base.lmht`),
+// as parciais (`<parcial nome="..."/>`), o modelo com os valores da resposta,
+// converte `<estilo>` de FolEs para CSS e, por fim, traduz LMHT para HTML.
+importar tudo como arquivos de "arquivos"
+importar tudo como lmht de "lmht"
+importar tudo como foles de "foles"
+importar tudo como textos de "../utilidades/texto.delegua"
+importar tudo como modelos de "./modelos.delegua"
+
+var nome_arquivo_leiaute = "base.lmht"
+
+// Remove os segmentos `:parametro` do caminho da rota. "/clientes/:id/notas" -> "clientes/notas".
+funcao caminho_sem_parametros(caminho_rota) {
+    var segmentos = []
+    para cada segmento em ("" + caminho_rota).dividir("/") {
+        se (segmento == "" ou segmento[0] == ":") { continua }
+        segmentos.adicionar(segmento)
+    }
+    retorna segmentos.juntar("/")
+}
+
+funcao ultima_parte_eh_parametro(caminho_rota) {
+    var segmentos = []
+    para cada segmento em ("" + caminho_rota).dividir("/") {
+        se (segmento != "") { segmentos.adicionar(segmento) }
+    }
+    se (segmentos.tamanho() == 0) { retorna falso }
+    var ultimo = segmentos[segmentos.tamanho() - 1]
+    retorna ultimo[0] == ":"
+}
+
+// Resolve o arquivo de visão para o caminho da rota, como no Líquido original:
+// `/x` -> `visoes/x.lmht` ou `visoes/x/inicial.lmht`; `/x/:id` -> `visoes/x/detalhes.lmht`.
+// Devolve { "visao": caminho ou nulo, "tentados": [..] }.
+funcao resolver_visao(diretorio_base, caminho_rota) {
+    var diretorio_visoes = arquivos.juntarCaminhos(diretorio_base, "visoes")
+    var sem_parametros = caminho_sem_parametros(caminho_rota)
+    var diretorio_ou_arquivo = diretorio_visoes
+    se (sem_parametros != "") { diretorio_ou_arquivo = arquivos.juntarCaminhos(diretorio_visoes, sem_parametros) }
+    var tentados = []
+
+    var visao = ""
+    se (ultima_parte_eh_parametro(caminho_rota)) {
+        visao = arquivos.juntarCaminhos(diretorio_ou_arquivo, "detalhes.lmht")
+    } senao se (sem_parametros == "") {
+        visao = arquivos.juntarCaminhos(diretorio_visoes, "inicial.lmht")
+    } senao {
+        visao = diretorio_ou_arquivo + ".lmht"
+    }
+    tentados.adicionar(visao)
+
+    se (arquivos.eArquivo(visao)) {
+        retorna { "visao": visao, "tentados": tentados }
+    }
+    var inicial = arquivos.juntarCaminhos(diretorio_ou_arquivo, "inicial.lmht")
+    se (nao tentados.inclui(inicial)) { tentados.adicionar(inicial) }
+    se (arquivos.eArquivo(inicial)) {
+        retorna { "visao": inicial, "tentados": tentados }
+    }
+    retorna { "visao": nulo, "tentados": tentados }
+}
+
+// Procura `base.lmht` no diretório da visão e nos diretórios acima, até `visoes/`.
+funcao resolver_leiaute(diretorio_base, caminho_visao) {
+    var diretorio_visoes = arquivos.caminhoAbsoluto(arquivos.juntarCaminhos(diretorio_base, "visoes"))
+    var visao_absoluta = arquivos.caminhoAbsoluto(caminho_visao)
+    var diretorio_atual = arquivos.diretorioPai(visao_absoluta)
+    var limite = 64
+    enquanto (limite > 0 e textos.comeca_com(diretorio_atual, diretorio_visoes)) {
+        limite = limite - 1
+        var candidato = arquivos.juntarCaminhos(diretorio_atual, nome_arquivo_leiaute)
+        se (candidato != visao_absoluta e arquivos.eArquivo(candidato)) {
+            retorna candidato
+        }
+        se (diretorio_atual == diretorio_visoes) { sustar }
+        diretorio_atual = arquivos.diretorioPai(diretorio_atual)
+    }
+    retorna nulo
+}
+
+// Conteúdo interno da primeira marcação `<nome>...</nome>`, aceitando atributos na abertura.
+// Devolve { "encontrado", "inicio", "fim", "interno" } (inicio/fim delimitam a marcação inteira).
+funcao localizar_marcacao(conteudo, nome) {
+    var texto_conteudo = "" + conteudo
+    var procurar = 0
+    enquanto (procurar < texto_conteudo.tamanho()) {
+        var abertura = textos.encontrar_a_partir(texto_conteudo, "<" + nome, procurar)
+        se (abertura < 0) { sustar }
+        var depois_nome = abertura + nome.tamanho() + 1
+        se (depois_nome >= texto_conteudo.tamanho()) { sustar }
+        var seguinte = texto_conteudo[depois_nome]
+        se (seguinte == ">" ou textos.eh_espaco(seguinte)) {
+            var fim_abertura = textos.encontrar_a_partir(texto_conteudo, ">", depois_nome)
+            se (fim_abertura < 0) { sustar }
+            var fechamento = textos.encontrar_a_partir(texto_conteudo, "</" + nome + ">", fim_abertura + 1)
+            se (fechamento < 0) { sustar }
+            retorna {
+                "encontrado": verdadeiro,
+                "inicio": abertura,
+                "fim": fechamento + nome.tamanho() + 3,
+                "inicio_interno": fim_abertura + 1,
+                "fim_interno": fechamento,
+                "interno": texto_conteudo.subtexto(fim_abertura + 1, fechamento)
+            }
+        }
+        procurar = depois_nome
+    }
+    retorna { "encontrado": falso, "inicio": -1, "fim": -1, "inicio_interno": -1, "fim_interno": -1, "interno": "" }
+}
+
+funcao localizar_cabeca(conteudo) {
+    var cabeca: dicionário = localizar_marcacao(conteudo, "cabeca")
+    se (cabeca["encontrado"]) { retorna cabeca }
+    retorna localizar_marcacao(conteudo, "cabeça")
+}
+
+// Posição e tamanho do marcador `<conteudo/>` (aceita espaços antes de `/>`), ou inicio -1.
+funcao localizar_marcador_conteudo(conteudo) {
+    var procurar = 0
+    enquanto (procurar < conteudo.tamanho()) {
+        var abertura = textos.encontrar_a_partir(conteudo, "<conteudo", procurar)
+        se (abertura < 0) { sustar }
+        var posicao = abertura + 9
+        enquanto (posicao < conteudo.tamanho() e textos.eh_espaco(conteudo[posicao])) { posicao = posicao + 1 }
+        se (conteudo.subtexto(posicao, posicao + 2) == "/>") {
+            retorna { "inicio": abertura, "fim": posicao + 2 }
+        }
+        procurar = abertura + 9
+    }
+    retorna { "inicio": -1, "fim": -1 }
+}
+
+// Insere o corpo da página no `<conteudo/>` do leiaute e acrescenta a cabeça da página à do leiaute.
+// Devolve { "resultado", "erro" }.
+funcao compor_com_leiaute(texto_leiaute, texto_pagina, caminho_leiaute) {
+    var marcador: dicionário = localizar_marcador_conteudo(texto_leiaute)
+    se (marcador["inicio"] < 0) {
+        retorna {
+            "resultado": "",
+            "erro": "O arquivo de leiaute '" + caminho_leiaute + "' não contém o marcador '<conteudo/>' onde o conteúdo da visão deveria ser inserido."
+        }
+    }
+    var corpo_pagina: dicionário = localizar_marcacao(texto_pagina, "corpo")
+    var interno_corpo = corpo_pagina["interno"]
+    var composto = texto_leiaute.subtexto(0, marcador["inicio"]) + interno_corpo + texto_leiaute.subtexto(marcador["fim"], texto_leiaute.tamanho())
+
+    var cabeca_pagina: dicionário = localizar_cabeca(texto_pagina)
+    se (cabeca_pagina["encontrado"] e cabeca_pagina["interno"].aparar() != "") {
+        var cabeca_leiaute: dicionário = localizar_cabeca(composto)
+        se (cabeca_leiaute["encontrado"]) {
+            composto = composto.subtexto(0, cabeca_leiaute["fim_interno"]) + cabeca_pagina["interno"] + composto.subtexto(cabeca_leiaute["fim_interno"], composto.tamanho())
+        } senao {
+            var posicao_lmht = composto.encontrar("<lmht>")
+            se (posicao_lmht >= 0) {
+                composto = composto.subtexto(0, posicao_lmht + 6) + "<cabeca>" + cabeca_pagina["interno"] + "</cabeca>" + composto.subtexto(posicao_lmht + 6, composto.tamanho())
+            }
+        }
+    }
+    retorna { "resultado": composto, "erro": "" }
+}
+
+// Substitui `<parcial nome="x"/>` (ou `<parcial nome="x"></parcial>`) pelo conteúdo de `visoes/parciais/x.lmht`.
+funcao aplicar_parciais(diretorio_base, conteudo) {
+    var resultado = ""
+    var restante = "" + conteudo
+    var diretorio_parciais = arquivos.juntarCaminhos(arquivos.juntarCaminhos(diretorio_base, "visoes"), "parciais")
+    var limite = 1000
+    enquanto (limite > 0) {
+        limite = limite - 1
+        var abertura = restante.encontrar("<parcial")
+        se (abertura < 0) { sustar }
+        var fim_abertura = textos.encontrar_a_partir(restante, ">", abertura)
+        se (fim_abertura < 0) {
+            retorna { "resultado": "", "erro": "Estrutura parcial não terminada." }
+        }
+        var marcacao = restante.subtexto(abertura, fim_abertura + 1)
+        var fim_total = fim_abertura + 1
+        se (nao textos.termina_com(marcacao, "/>")) {
+            var fechamento = textos.encontrar_a_partir(restante, "</parcial>", fim_abertura)
+            se (fechamento < 0) {
+                retorna { "resultado": "", "erro": "Estrutura parcial sem fechamento." }
+            }
+            fim_total = fechamento + 10
+        }
+        var posicao_nome = marcacao.encontrar("nome=\"")
+        se (posicao_nome < 0) {
+            retorna { "resultado": "", "erro": "Na estrutura parcial, o atributo 'nome' não foi informado." }
+        }
+        var fim_nome = textos.encontrar_a_partir(marcacao, "\"", posicao_nome + 6)
+        var nome = marcacao.subtexto(posicao_nome + 6, fim_nome)
+        se (nao arquivos.eDiretorio(diretorio_parciais)) {
+            retorna { "resultado": "", "erro": "O diretório 'visoes/parciais' não foi encontrado." }
+        }
+        var conteudo_parcial = arquivos.lerTexto(arquivos.juntarCaminhos(diretorio_parciais, nome + ".lmht"))
+        se (conteudo_parcial == nulo) {
+            retorna { "resultado": "", "erro": "O arquivo '" + nome + ".lmht' não foi encontrado." }
+        }
+        resultado = resultado + restante.subtexto(0, abertura) + conteudo_parcial
+        restante = restante.subtexto(fim_total, restante.tamanho())
+    }
+    retorna { "resultado": resultado + restante, "erro": "" }
+}
+
+// Converte o conteúdo de cada `<estilo>` de FolEs para CSS, trocando a estrutura por `<style>`,
+// como no Líquido original (o tradutor LMHT mantém `<estilo>` como está dentro de `<cabeca>`).
+funcao aplicar_folEs(conteudo) {
+    var resultado = ""
+    var restante = "" + conteudo
+    var limite = 1000
+    enquanto (limite > 0) {
+        limite = limite - 1
+        var estilo: dicionário = localizar_marcacao(restante, "estilo")
+        se (nao estilo["encontrado"]) { sustar }
+        var css = ""
+        tente {
+            css = foles.converter_texto_para_css(estilo["interno"])
+        } pegue (erro) {
+            escreva("[Liquido] Erro ao processar estilo no LMHT: " + erro.mensagem + ". O estilo será ignorado, mas a página continuará sendo renderizada.")
+        }
+        resultado = resultado + restante.subtexto(0, estilo["inicio"]) + "<style>\n" + css + "\n</style>"
+        restante = restante.subtexto(estilo["fim"], restante.tamanho())
+    }
+    retorna resultado + restante
+}
+
+// Formata a visão da rota. Devolve { "resultado": html, "erro": "" }.
+funcao formatar(diretorio_base, caminho_rota, valores) {
+    var resolucao: dicionário = resolver_visao(diretorio_base, caminho_rota)
+    se (resolucao["visao"] == nulo) {
+        retorna {
+            "resultado": "",
+            "erro": "Visão correspondente à rota " + caminho_rota + " não existe. Caminhos tentados: " + resolucao["tentados"].juntar("; ") + "; "
+        }
+    }
+    var texto_base = arquivos.lerTexto(resolucao["visao"])
+    se (texto_base == nulo) {
+        retorna { "resultado": "", "erro": "Não foi possível ler a visão " + resolucao["visao"] + "." }
+    }
+    texto_base = textos.substituir_todos(texto_base, "\r\n", "\n")
+
+    var caminho_leiaute = resolver_leiaute(diretorio_base, resolucao["visao"])
+    se (caminho_leiaute != nulo) {
+        var texto_leiaute = arquivos.lerTexto(caminho_leiaute)
+        var composicao: dicionário = compor_com_leiaute(textos.substituir_todos(texto_leiaute, "\r\n", "\n"), texto_base, caminho_leiaute)
+        se (composicao["erro"] != "") { retorna composicao }
+        texto_base = composicao["resultado"]
+    }
+
+    var parciais: dicionário = aplicar_parciais(diretorio_base, texto_base)
+    se (parciais["erro"] != "") { retorna parciais }
+    texto_base = parciais["resultado"]
+
+    var renderizado = modelos.renderizar(texto_base, valores)
+    se (renderizado["erro"] != "") {
+        retorna { "resultado": "", "erro": "Erro no modelo da visão " + resolucao["visao"] + ": " + renderizado["erro"] }
+    }
+    texto_base = aplicar_folEs(renderizado["resultado"])
+
+    retorna { "resultado": lmht.converter_lmht_para_html(texto_base), "erro": "" }
+}

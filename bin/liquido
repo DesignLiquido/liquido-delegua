@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# Executa a interface por linha de comando do Líquido.
+# Uso: liquido <comando> [opções]
+DIRETORIO_LIQUIDO="$(cd "$(dirname "$0")/.." && pwd)"
+exec ${LIQUIDO_DELEGUA:-delegua} "$DIRETORIO_LIQUIDO/fontes/ilc.delegua" -- "$@"

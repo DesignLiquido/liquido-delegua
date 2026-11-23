@@ -1,0 +1,79 @@
+// Tratamento de alvos de requisição HTTP: caminho, parâmetros de pesquisa e codificação.
+importar tudo como rede de "rede"
+importar tudo como textos de "../utilidades/texto.delegua"
+
+funcao decodificar(componente) {
+    se (componente == nulo) { retorna "" }
+    var decodificado = rede.decodificarComponenteUrl("" + componente)
+    se (decodificado == nulo) { retorna "" + componente }
+    retorna decodificado
+}
+
+funcao codificar(componente) {
+    se (componente == nulo) { retorna "" }
+    retorna rede.codificarComponenteUrl("" + componente)
+}
+
+// Separa "/caminho?a=1#x" em { "caminho": "/caminho", "consulta": "a=1" }.
+funcao separar_alvo(alvo) {
+    var texto_alvo = "" + alvo
+    var posicao_fragmento = texto_alvo.encontrar("#")
+    se (posicao_fragmento >= 0) { texto_alvo = texto_alvo.subtexto(0, posicao_fragmento) }
+    var posicao_consulta = texto_alvo.encontrar("?")
+    se (posicao_consulta < 0) {
+        retorna { "caminho": texto_alvo, "consulta": "" }
+    }
+    retorna {
+        "caminho": texto_alvo.subtexto(0, posicao_consulta),
+        "consulta": texto_alvo.subtexto(posicao_consulta + 1, texto_alvo.tamanho())
+    }
+}
+
+// Analisa "a=1&b=dois&b=tres" em um dicionário. Chaves repetidas viram vetores, como no Express.
+funcao analisar_consulta(consulta) {
+    var resultado = {}
+    se (consulta == nulo ou consulta == "") { retorna resultado }
+    para cada par em ("" + consulta).dividir("&") {
+        se (par == "") { continua }
+        var partes = textos.dividir_primeira(par, "=")
+        var chave = decodificar(partes[0])
+        var valor_par = ""
+        se (partes.tamanho() > 1) { valor_par = decodificar(partes[1]) }
+        se (resultado.contem(chave)) {
+            var existente = resultado[chave]
+            var tipo_existente = tipo de existente
+            se (tipo_existente == "vetor") {
+                existente.adicionar(valor_par)
+            } senao {
+                var lista = [existente, valor_par]
+                resultado[chave] = lista
+            }
+        } senao {
+            resultado[chave] = valor_par
+        }
+    }
+    retorna resultado
+}
+
+// Normaliza o caminho: decodifica, remove barras repetidas e a barra final (exceto na raiz).
+funcao normalizar_caminho(caminho) {
+    var segmentos = []
+    para cada segmento em ("" + caminho).dividir("/") {
+        se (segmento != "") { segmentos.adicionar(segmento) }
+    }
+    retorna "/" + segmentos.juntar("/")
+}
+
+// Segmentos decodificados de um caminho. Recusa segmentos "." e ".." (devolve nulo).
+funcao segmentos_caminho(caminho) {
+    var segmentos = []
+    para cada segmento em ("" + caminho).dividir("/") {
+        se (segmento == "") { continua }
+        var decodificado = decodificar(segmento)
+        se (decodificado == "." ou decodificado == ".." ou decodificado.inclui("/") ou decodificado.inclui("\\")) {
+            retorna nulo
+        }
+        segmentos.adicionar(decodificado)
+    }
+    retorna segmentos
+}

@@ -1,0 +1,130 @@
+// Análise de requisições e montagem de respostas HTTP/1.1 em texto.
+importar tudo como criptografia de "criptografia"
+importar tudo como textos de "../utilidades/texto.delegua"
+
+var textos_status = {
+    "100": "Continue",
+    "101": "Switching Protocols",
+    "200": "OK",
+    "201": "Created",
+    "202": "Accepted",
+    "204": "No Content",
+    "206": "Partial Content",
+    "301": "Moved Permanently",
+    "302": "Found",
+    "303": "See Other",
+    "304": "Not Modified",
+    "307": "Temporary Redirect",
+    "308": "Permanent Redirect",
+    "400": "Bad Request",
+    "401": "Unauthorized",
+    "403": "Forbidden",
+    "404": "Not Found",
+    "405": "Method Not Allowed",
+    "406": "Not Acceptable",
+    "408": "Request Timeout",
+    "409": "Conflict",
+    "410": "Gone",
+    "413": "Payload Too Large",
+    "415": "Unsupported Media Type",
+    "422": "Unprocessable Entity",
+    "429": "Too Many Requests",
+    "500": "Internal Server Error",
+    "501": "Not Implemented",
+    "502": "Bad Gateway",
+    "503": "Service Unavailable"
+}
+
+funcao texto_status(codigo) {
+    var chave = texto(codigo)
+    se (textos_status.contem(chave)) { retorna textos_status[chave] }
+    retorna "Status " + chave
+}
+
+var metodos_conhecidos = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "COPY", "LOCK", "UNLOCK", "PURGE", "PROPFIND", "LINK", "UNLINK", "VIEW", "TRACE", "CONNECT"]
+
+// Analisa a linha de requisição e os cabeçalhos (texto até "\r\n\r\n", inclusive ou não).
+// Devolve { "erro": "", "metodo", "alvo", "versao", "cabecalhos" }. Nomes de cabeçalhos ficam em minúsculas.
+funcao analisar_cabecalho_requisicao(texto_cabecalho) {
+    var normalizado = textos.substituir_todos("" + texto_cabecalho, "\r\n", "\n")
+    var linhas = normalizado.dividir("\n")
+    var cabecalhos = {}
+    se (linhas.tamanho() == 0 ou linhas[0].aparar() == "") {
+        retorna { "erro": "Requisição vazia", "metodo": "", "alvo": "", "versao": "", "cabecalhos": cabecalhos }
+    }
+
+    var partes = linhas[0].aparar().dividir(" ")
+    se (partes.tamanho() != 3) {
+        retorna { "erro": "Linha de requisição inválida", "metodo": "", "alvo": "", "versao": "", "cabecalhos": cabecalhos }
+    }
+    var metodo = partes[0].maiusculo()
+    var versao = partes[2].maiusculo()
+    se (nao textos.comeca_com(versao, "HTTP/")) {
+        retorna { "erro": "Versão HTTP inválida", "metodo": metodo, "alvo": partes[1], "versao": versao, "cabecalhos": cabecalhos }
+    }
+
+    para (var i = 1; i < linhas.tamanho(); i = i + 1) {
+        var linha = linhas[i]
+        se (linha.aparar() == "") { continua }
+        var separador = linha.encontrar(":")
+        se (separador <= 0) { continua }
+        var nome = linha.subtexto(0, separador).aparar().minusculo()
+        var valor_cabecalho = linha.subtexto(separador + 1, linha.tamanho()).aparar()
+        se (cabecalhos.contem(nome)) {
+            // Cabeçalhos repetidos são combinados, como manda a RFC 9110 (exceto set-cookie).
+            cabecalhos[nome] = cabecalhos[nome] + ", " + valor_cabecalho
+        } senao {
+            cabecalhos[nome] = valor_cabecalho
+        }
+    }
+
+    retorna { "erro": "", "metodo": metodo, "alvo": partes[1], "versao": versao, "cabecalhos": cabecalhos }
+}
+
+funcao eh_metodo_conhecido(metodo) {
+    retorna metodos_conhecidos.inclui(metodo)
+}
+
+// Quantidade de bytes do texto em UTF-8. Delégua não expõe códigos de caracteres,
+// então o tamanho é obtido a partir da codificação Base64 (que codifica os bytes UTF-8).
+funcao tamanho_em_bytes(conteudo) {
+    var texto_conteudo = "" + conteudo
+    se (texto_conteudo == "") { retorna 0 }
+    var base64 = criptografia.codificarBase64(texto_conteudo)
+    var preenchimento = 0
+    se (textos.termina_com(base64, "==")) { preenchimento = 2 }
+    senao se (textos.termina_com(base64, "=")) { preenchimento = 1 }
+    retorna inteiro(base64.tamanho() / 4) * 3 - preenchimento
+}
+
+// Monta a mensagem de resposta.
+// `cabecalhos` é um vetor de pares [nome, valor], para permitir nomes repetidos (Set-Cookie).
+funcao montar_resposta(codigo_status, cabecalhos, corpo, incluir_corpo) {
+    var mensagem = "HTTP/1.1 " + texto(codigo_status) + " " + texto_status(codigo_status) + "\r\n"
+    var tem_tamanho = falso
+    para cada par em cabecalhos {
+        se (par[0].minusculo() == "content-length") { tem_tamanho = verdadeiro }
+        mensagem = mensagem + par[0] + ": " + par[1] + "\r\n"
+    }
+    var texto_corpo = ""
+    se (corpo != nulo) { texto_corpo = "" + corpo }
+    var sem_corpo = codigo_status == 204 ou codigo_status == 304 ou (codigo_status >= 100 e codigo_status < 200)
+    se (nao tem_tamanho e nao sem_corpo) {
+        mensagem = mensagem + "Content-Length: " + texto(tamanho_em_bytes(texto_corpo)) + "\r\n"
+    }
+    mensagem = mensagem + "Connection: close\r\n\r\n"
+    se (incluir_corpo e nao sem_corpo) {
+        mensagem = mensagem + texto_corpo
+    }
+    retorna mensagem
+}
+
+// Linha de status e cabeçalhos, sem corpo e sem Content-Length (para corpos enviados à parte,
+// como arquivos binários; a conexão é encerrada ao final).
+funcao montar_inicio_resposta(codigo_status, cabecalhos) {
+    var mensagem = "HTTP/1.1 " + texto(codigo_status) + " " + texto_status(codigo_status) + "\r\n"
+    para cada par em cabecalhos {
+        mensagem = mensagem + par[0] + ": " + par[1] + "\r\n"
+    }
+    retorna mensagem + "Connection: close\r\n\r\n"
+}

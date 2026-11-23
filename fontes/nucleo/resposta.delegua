@@ -1,0 +1,115 @@
+// A resposta montada pelas funções de rota.
+//
+// Cada método grava propriedades e devolve `isto`, permitindo encadeamento:
+//     resposta.enviar("Olá mundo").status(200)
+// Funções de rota não precisam usar `retorna`: o Líquido lê o mesmo objeto depois da chamada.
+//
+// Ordem de precedência na montagem da resposta HTTP:
+// `destino` (redirecionamento) → visão LMHT → JSON → `mensagem` (texto) → apenas `statusHttp`.
+
+classe Resposta {
+    statusHttp: qualquer
+    mensagem: qualquer
+    respostaJson: qualquer
+    temJson: lógico
+    destino: qualquer
+    usarLmht: lógico
+    visao: qualquer
+    valores: qualquer
+    tipoDefinido: qualquer
+    // Pares [nome, valor] de cabeçalhos adicionais.
+    cabecalhosAdicionais: vetor
+    // Pares [nome, valor, opcoes] de cookies a definir.
+    cookiesDefinidos: vetor
+
+    construtor() {
+        isto.statusHttp = nulo
+        isto.mensagem = nulo
+        isto.respostaJson = nulo
+        isto.temJson = falso
+        isto.destino = nulo
+        isto.usarLmht = falso
+        isto.visao = nulo
+        isto.valores = nulo
+        isto.tipoDefinido = nulo
+        isto.cabecalhosAdicionais = []
+        isto.cookiesDefinidos = []
+    }
+
+    // Responde com texto. Textos que começam com `<?xml` são enviados como XML.
+    enviar(mensagem) {
+        isto.mensagem = mensagem
+        retorna isto
+    }
+
+    status(codigo) {
+        isto.statusHttp = codigo
+        retorna isto
+    }
+
+    json(dados) {
+        isto.respostaJson = dados
+        isto.temJson = verdadeiro
+        retorna isto
+    }
+
+    // Redireciona (302, ou o status já definido entre 300 e 399).
+    redirecionar(destino) {
+        isto.destino = destino
+        retorna isto
+    }
+
+    // Renderiza a visão LMHT da rota.
+    // - `lmht()`: visão da rota, sem valores;
+    // - `lmht(valores)`: visão da rota com valores;
+    // - `lmht("nome-da-visao", valores)`: visão com outro nome, no mesmo diretório da rota.
+    lmht(...visaoEValores) {
+        isto.usarLmht = verdadeiro
+        se (visaoEValores.tamanho() > 1) {
+            isto.visao = visaoEValores[0]
+            isto.valores = visaoEValores[1]
+        } senao se (visaoEValores.tamanho() == 1) {
+            isto.valores = visaoEValores[0]
+        }
+        retorna isto
+    }
+
+    cabecalho(nome, valor) {
+        var par = [nome, "" + valor]
+        isto.cabecalhosAdicionais.adicionar(par)
+        retorna isto
+    }
+
+    // Define o Content-Type da resposta, por exemplo "text/csv; charset=utf-8".
+    tipoConteudo(tipo_conteudo) {
+        isto.tipoDefinido = tipo_conteudo
+        retorna isto
+    }
+
+    // Define um cookie. Opções (dicionário opcional): caminho, dominio, idadeMaxima,
+    // expira, seguro, somenteHttp, mesmoSitio.
+    cookie(nome, valor, ...opcoes) {
+        var opcoes_cookie = {}
+        se (opcoes.tamanho() > 0 e opcoes[0] != nulo) { opcoes_cookie = opcoes[0] }
+        var definicao = [nome, "" + valor, opcoes_cookie]
+        isto.cookiesDefinidos.adicionar(definicao)
+        retorna isto
+    }
+
+    limparCookie(nome) {
+        var opcoes_cookie = { "idadeMaxima": 0, "expira": "Thu, 01 Jan 1970 00:00:00 GMT" }
+        var definicao = [nome, "", opcoes_cookie]
+        isto.cookiesDefinidos.adicionar(definicao)
+        retorna isto
+    }
+
+    // Verdadeiro se a resposta já tem conteúdo (usado para interromper a cadeia de middlewares).
+    definida() {
+        se (isto.destino != nulo ou isto.usarLmht ou isto.temJson ou isto.mensagem != nulo) { retorna verdadeiro }
+        retorna isto.statusHttp != nulo e isto.statusHttp != 200
+    }
+}
+
+funcao criar_resposta() {
+    retorna Resposta()
+}

@@ -1,0 +1,740 @@
+// Aplicação Líquido: registro de rotas, processamento de requisições e servidor HTTP.
+//
+// O processamento é feito por `processar_requisicao`, que recebe os dados já lidos da conexão
+// e devolve a resposta HTTP como dicionário, sem depender de soquetes. O servidor (`servir`)
+// apenas lê requisições pelo módulo `rede`, chama o processamento e escreve as respostas.
+importar tudo como arquivos de "arquivos"
+importar tudo como rede de "rede"
+importar tudo como tempo de "tempo"
+importar tudo como roteamento de "../roteador/roteador.delegua"
+importar tudo como url de "../http/url.delegua"
+importar tudo como mensagens de "../http/mensagens_http.delegua"
+importar tudo como cookies_http de "../http/cookies.delegua"
+importar tudo como mime de "../http/tipos_mime.delegua"
+importar tudo como json_liquido de "../utilidades/json.delegua"
+importar tudo como textos de "../utilidades/texto.delegua"
+importar tudo como centro de "../configuracao/centro_configuracoes.delegua"
+importar tudo como formatador de "../visoes/formatador_lmht.delegua"
+importar tudo como paginas de "./paginas.delegua"
+importar tudo como erros de "./erros.delegua"
+importar tudo como requisicoes de "./requisicao.delegua"
+importar tudo como respostas de "./resposta.delegua"
+importar tudo como jwt de "../autenticacao/jwt.delegua"
+importar tudo como documentacao de "../documentacao/open_api.delegua"
+
+var tamanho_maximo_cabecalho = 65536
+var tamanho_maximo_corpo = 10485760
+
+// ── Montagem de respostas HTTP (dicionários) ──
+
+funcao nova_resposta_http(codigo_status) {
+    var cabecalhos = []
+    retorna { "status": codigo_status, "cabecalhos": cabecalhos, "corpo": "", "arquivo": nulo }
+}
+
+funcao adicionar_cabecalho(resposta_http, nome, valor_cabecalho) {
+    var par = [nome, "" + valor_cabecalho]
+    resposta_http["cabecalhos"].adicionar(par)
+}
+
+funcao obter_cabecalho(resposta_http, nome) {
+    var nome_minusculo = nome.minusculo()
+    para cada par em resposta_http["cabecalhos"] {
+        se (par[0].minusculo() == nome_minusculo) { retorna par[1] }
+    }
+    retorna nulo
+}
+
+funcao resposta_json(codigo_status, dados) {
+    var resposta_http: dicionário = nova_resposta_http(codigo_status)
+    adicionar_cabecalho(resposta_http, "Content-Type", "application/json; charset=utf-8")
+    resposta_http["corpo"] = json_liquido.serializar(dados)
+    retorna resposta_http
+}
+
+funcao resposta_texto(codigo_status, conteudo, tipo_conteudo) {
+    var resposta_http: dicionário = nova_resposta_http(codigo_status)
+    adicionar_cabecalho(resposta_http, "Content-Type", tipo_conteudo)
+    resposta_http["corpo"] = "" + conteudo
+    retorna resposta_http
+}
+
+funcao prefere_json(requisicao) {
+    var aceite = requisicao.cabecalho("accept")
+    se (aceite == nulo) { retorna falso }
+    retorna aceite.inclui("application/json") ou aceite.inclui("application/*") ou aceite.inclui("*/*")
+}
+
+// ── Cabeçalhos de segurança (equivalentes aos padrões do Helmet) ──
+
+funcao aplicar_cabecalhos_seguranca(resposta_http, caminho) {
+    // A página de documentação carrega o ReDoc de uma CDN, então não recebe a política de conteúdo.
+    se (nao textos.comeca_com(caminho, "/docs")) {
+        adicionar_cabecalho(resposta_http, "Content-Security-Policy", "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests")
+    }
+    adicionar_cabecalho(resposta_http, "Cross-Origin-Opener-Policy", "same-origin")
+    adicionar_cabecalho(resposta_http, "Cross-Origin-Resource-Policy", "same-origin")
+    adicionar_cabecalho(resposta_http, "Origin-Agent-Cluster", "?1")
+    adicionar_cabecalho(resposta_http, "Referrer-Policy", "no-referrer")
+    adicionar_cabecalho(resposta_http, "Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    adicionar_cabecalho(resposta_http, "X-Content-Type-Options", "nosniff")
+    adicionar_cabecalho(resposta_http, "X-DNS-Prefetch-Control", "off")
+    adicionar_cabecalho(resposta_http, "X-Download-Options", "noopen")
+    adicionar_cabecalho(resposta_http, "X-Frame-Options", "SAMEORIGIN")
+    adicionar_cabecalho(resposta_http, "X-Permitted-Cross-Domain-Policies", "none")
+    adicionar_cabecalho(resposta_http, "X-XSS-Protection", "0")
+}
+
+// ── CORS ──
+
+funcao origens_cors(configuracao_roteador) {
+    var origens = configuracao_roteador["origensCors"]
+    var lista = []
+    se (origens == nulo) {
+        lista.adicionar("*")
+        retorna lista
+    }
+    var tipo_origens = tipo de origens
+    se (tipo_origens == "texto") {
+        para cada origem em origens.dividir(",") {
+            var aparada = origem.aparar()
+            se (aparada != "") { lista.adicionar(aparada) }
+        }
+    } senao {
+        para cada origem_vetor em origens { lista.adicionar(("" + origem_vetor).aparar()) }
+    }
+    se (lista.tamanho() == 0) { lista.adicionar("*") }
+    retorna lista
+}
+
+// Cabeçalhos CORS (como o pacote `cors`). Devolve verdadeiro se a requisição é uma pré-verificação.
+funcao aplicar_cors(resposta_http, requisicao, configuracao_roteador) {
+    var origens: vetor = origens_cors(configuracao_roteador)
+    var origem = requisicao.cabecalho("origin")
+    se (origens.tamanho() == 1 e origens[0] == "*") {
+        adicionar_cabecalho(resposta_http, "Access-Control-Allow-Origin", "*")
+    } senao {
+        se (origem != nulo e origens.inclui(origem)) {
+            adicionar_cabecalho(resposta_http, "Access-Control-Allow-Origin", origem)
+        }
+        adicionar_cabecalho(resposta_http, "Vary", "Origin")
+    }
+    se (requisicao.metodo == "OPTIONS" e requisicao.cabecalho("access-control-request-method") != nulo) {
+        adicionar_cabecalho(resposta_http, "Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE")
+        var cabecalhos_pedidos = requisicao.cabecalho("access-control-request-headers")
+        se (cabecalhos_pedidos != nulo) {
+            adicionar_cabecalho(resposta_http, "Access-Control-Allow-Headers", cabecalhos_pedidos)
+            adicionar_cabecalho(resposta_http, "Vary", "Access-Control-Request-Headers")
+        }
+        retorna verdadeiro
+    }
+    retorna falso
+}
+
+// ── Corpo da requisição ──
+
+// Interpreta o corpo segundo o Content-Type. Devolve { "erro": texto, "corpo": .. }.
+funcao interpretar_corpo(requisicao, configuracao_roteador) {
+    var vazio = {}
+    var texto_corpo = requisicao.corpoTexto
+    se (nao configuracao_roteador["bodyParser"] e nao configuracao_roteador["json"]) {
+        retorna { "erro": "", "corpo": vazio }
+    }
+    se (texto_corpo == "") { retorna { "erro": "", "corpo": vazio } }
+    var tipo_conteudo = requisicao.cabecalho("content-type")
+    se (tipo_conteudo == nulo) { tipo_conteudo = "" }
+    tipo_conteudo = tipo_conteudo.minusculo()
+    se (tipo_conteudo.inclui("application/json") ou tipo_conteudo.inclui("+json")) {
+        var analisado = json_liquido.analisar(texto_corpo)
+        se (analisado["erro"] != "") {
+            retorna { "erro": "JSON inválido no corpo da requisição: " + analisado["erro"], "corpo": vazio }
+        }
+        retorna { "erro": "", "corpo": analisado["resultado"] }
+    }
+    se (tipo_conteudo.inclui("application/x-www-form-urlencoded")) {
+        retorna { "erro": "", "corpo": url.analisar_consulta(texto_corpo) }
+    }
+    retorna { "erro": "", "corpo": texto_corpo }
+}
+
+// ── Autenticação por JWT ──
+
+funcao autenticacao_ativa(aplicacao) {
+    var liquido = aplicacao.configuracao["liquido"]
+    retorna liquido["roteador"]["passport"] == verdadeiro ou liquido["autenticacao"]["tecnologia"] == "jwt"
+}
+
+funcao autenticar_requisicao(aplicacao, requisicao) {
+    se (nao autenticacao_ativa(aplicacao) ou aplicacao.chaveSecreta == nulo) { retorna }
+    var autorizacao = requisicao.cabecalho("authorization")
+    se (autorizacao == nulo) { retorna }
+    var token = autorizacao.aparar()
+    se (textos.comeca_com(token.minusculo(), "bearer ")) { token = token.subtexto(7, token.tamanho()).aparar() }
+    var resultado = jwt.decodificar(token, aplicacao.chaveSecreta)
+    se (resultado["valido"]) {
+        requisicao.usuario = resultado["conteudo"]
+        requisicao.autenticado = verdadeiro
+    }
+}
+
+// POST /token: troca e-mail e senha (de `usuarios.json`) por um token JWT.
+funcao emitir_token(aplicacao, requisicao) {
+    var corpo = requisicao.corpo
+    var nao_autorizado = { "erro": "Não autorizado" }
+    se (aplicacao.chaveSecreta == nulo ou nao json_liquido.eh_dicionario(corpo)) { retorna resposta_json(401, nao_autorizado) }
+    se (nao corpo.contem("email") ou nao corpo.contem("senha")) { retorna resposta_json(401, nao_autorizado) }
+    para cada usuario em aplicacao.usuarios {
+        se (json_liquido.eh_dicionario(usuario) e usuario.contem("email") e usuario.contem("senha") e usuario["email"] == corpo["email"] e usuario["senha"] == corpo["senha"]) {
+            var conteudo_token = { "id": usuario["id"], "iat": jwt.agora_em_segundos() }
+            var token = jwt.codificar(conteudo_token, aplicacao.chaveSecreta)
+            var dados_token = { "token": token }
+            retorna resposta_json(200, dados_token)
+        }
+    }
+    retorna resposta_json(401, nao_autorizado)
+}
+
+// ── Arquivos estáticos ──
+
+// Procura um arquivo estático para o caminho. Devolve o caminho no disco ou nulo.
+funcao procurar_arquivo_estatico(aplicacao, caminho) {
+    var segmentos = url.segmentos_caminho(caminho)
+    se (segmentos == nulo) { retorna nulo }
+    para cada diretorio em aplicacao.diretoriosEstaticos {
+        var candidato = diretorio
+        para cada segmento em segmentos { candidato = arquivos.juntarCaminhos(candidato, segmento) }
+        se (arquivos.eArquivo(candidato)) { retorna candidato }
+        se (arquivos.eDiretorio(candidato)) {
+            var indice = arquivos.juntarCaminhos(candidato, "index.html")
+            se (arquivos.eArquivo(indice)) { retorna indice }
+        }
+    }
+    retorna nulo
+}
+
+funcao resposta_arquivo_estatico(caminho_arquivo) {
+    var tipo_conteudo = mime.tipo_por_caminho(caminho_arquivo)
+    var resposta_http: dicionário = nova_resposta_http(200)
+    adicionar_cabecalho(resposta_http, "Content-Type", tipo_conteudo)
+    adicionar_cabecalho(resposta_http, "Cache-Control", "public, max-age=0")
+    se (mime.eh_texto(caminho_arquivo)) {
+        var conteudo = arquivos.lerTexto(caminho_arquivo)
+        se (conteudo == nulo) { retorna resposta_texto(500, "Não foi possível ler o arquivo.", "text/plain; charset=utf-8") }
+        resposta_http["corpo"] = conteudo
+    } senao {
+        // Arquivos binários são enviados diretamente do disco pelo servidor.
+        resposta_http["arquivo"] = caminho_arquivo
+    }
+    retorna resposta_http
+}
+
+// ── Erros ──
+
+funcao resposta_erro_interno(aplicacao, mensagem_erro, arquivo_fonte) {
+    var linha_erro = erros.descrever(mensagem_erro, arquivo_fonte)
+    escreva("[Liquido] " + linha_erro)
+    se (aplicacao.configuracao["liquido"]["arquetipo"] == "mvc") {
+        var linhas = [linha_erro]
+        retorna resposta_texto(500, paginas.pagina_erro(linhas), "text/html; charset=utf-8")
+    }
+    var detalhes = [linha_erro]
+    var corpo_erro = { "mensagem": "Ocorreu um erro interno na aplicação.", "detalhes": detalhes }
+    retorna resposta_json(500, corpo_erro)
+}
+
+// ── Conversão da Resposta da rota em resposta HTTP ──
+
+funcao caminho_da_visao(caminho_rota, nome_visao) {
+    se (nome_visao == nulo) { retorna caminho_rota }
+    var partes = ("" + caminho_rota).dividir("/")
+    var mantidas = []
+    para (var i = 0; i < partes.tamanho() - 1; i = i + 1) { mantidas.adicionar(partes[i]) }
+    retorna mantidas.juntar("/") + "/" + nome_visao
+}
+
+funcao converter_resposta(aplicacao, requisicao, resposta, arquivo_fonte) {
+    var codigo_status = 200
+    se (resposta.statusHttp != nulo) { codigo_status = resposta.statusHttp }
+    var resposta_http: dicionário = nova_resposta_http(codigo_status)
+
+    se (resposta.destino != nulo) {
+        se (codigo_status < 300 ou codigo_status > 399) { codigo_status = 302 }
+        resposta_http = resposta_texto(codigo_status, "Found. Redirecting to " + resposta.destino, "text/plain; charset=utf-8")
+        adicionar_cabecalho(resposta_http, "Location", resposta.destino)
+    } senao se (resposta.usarLmht) {
+        var visao = caminho_da_visao(requisicao.rota, resposta.visao)
+        var valores = resposta.valores
+        se (valores == nulo) { valores = {} }
+        var formatado = formatador.formatar(aplicacao.diretorioBase, visao, valores)
+        se (formatado["erro"] != "") {
+            escreva("[Liquido] Erro ao processar LMHT: " + formatado["erro"])
+            resposta_http = resposta_texto(500, "Erro ao processar visualizacao LMHT.", "text/plain; charset=utf-8")
+        } senao {
+            resposta_http = resposta_texto(codigo_status, formatado["resultado"], "text/html; charset=utf-8")
+        }
+    } senao se (resposta.temJson) {
+        resposta_http = resposta_json(codigo_status, resposta.respostaJson)
+    } senao se (resposta.mensagem != nulo) {
+        var mensagem = "" + resposta.mensagem
+        var tipo_mensagem = "text/plain; charset=utf-8"
+        se (textos.comeca_com(mensagem.aparar(), "<?xml")) { tipo_mensagem = "application/xml; charset=utf-8" }
+        resposta_http = resposta_texto(codigo_status, mensagem, tipo_mensagem)
+    } senao {
+        resposta_http = resposta_texto(codigo_status, "", "text/plain; charset=utf-8")
+    }
+
+    se (resposta.tipoDefinido != nulo) {
+        var sem_tipo = []
+        para cada par em resposta_http["cabecalhos"] {
+            se (par[0].minusculo() != "content-type") { sem_tipo.adicionar(par) }
+        }
+        resposta_http["cabecalhos"] = sem_tipo
+        adicionar_cabecalho(resposta_http, "Content-Type", resposta.tipoDefinido)
+    }
+    para cada par_adicional em resposta.cabecalhosAdicionais {
+        adicionar_cabecalho(resposta_http, par_adicional[0], par_adicional[1])
+    }
+    para cada definicao em resposta.cookiesDefinidos {
+        adicionar_cabecalho(resposta_http, "Set-Cookie", cookies_http.montar_set_cookie(definicao[0], definicao[1], definicao[2]))
+    }
+    retorna resposta_http
+}
+
+// ── Execução da rota ──
+
+funcao executar_rota(aplicacao, rota, requisicao) {
+    var resposta = respostas.criar_resposta()
+    var funcoes = rota["funcoes"]
+    var arquivo_fonte = rota["arquivo"]
+    para (var i = 0; i < funcoes.tamanho(); i = i + 1) {
+        var funcao_rota = funcoes[i]
+        var falhou = falso
+        var mensagem_erro = ""
+        tente {
+            funcao_rota(requisicao, resposta)
+        } pegue (erro) {
+            falhou = verdadeiro
+            se (erro == nulo) { mensagem_erro = "Erro desconhecido." } senao { mensagem_erro = "" + erro.mensagem }
+        }
+        se (falhou) { retorna resposta_erro_interno(aplicacao, mensagem_erro, arquivo_fonte) }
+        // Middlewares que já definiram uma resposta interrompem a cadeia.
+        se (i < funcoes.tamanho() - 1 e resposta.definida()) { sustar }
+    }
+    retorna converter_resposta(aplicacao, requisicao, resposta, arquivo_fonte)
+}
+
+// ── Processamento de uma requisição ──
+
+funcao montar_requisicao(aplicacao, dados) {
+    var requisicao = requisicoes.criar_requisicao()
+    var partes = url.separar_alvo(dados["alvo"])
+    requisicao.metodo = dados["metodo"]
+    requisicao.url = dados["alvo"]
+    requisicao.versao = dados["versao"]
+    requisicao.cabecalhos = dados["cabecalhos"]
+    requisicao.caminho = url.normalizar_caminho(partes["caminho"])
+    requisicao.parametrosCaminho = requisicao.caminho
+    requisicao.parametrosPesquisa = url.analisar_consulta(partes["consulta"])
+    requisicao.corpoTexto = dados["corpo"]
+    var configuracao_roteador = aplicacao.configuracao["liquido"]["roteador"]
+    se (configuracao_roteador["cookieParser"]) {
+        requisicao.cookies = cookies_http.analisar_cookies(requisicao.cabecalho("cookie"))
+    }
+    retorna requisicao
+}
+
+// Resolve a rota da requisição e a executa; trata /token, 405, 400 e 404.
+funcao resolver_e_executar(aplicacao, requisicao) {
+    var metodo = requisicao.metodo
+    var caminho = requisicao.caminho
+    var resolucao = aplicacao.roteador.resolver(metodo, caminho)
+    var situacao = resolucao["situacao"]
+    se (situacao == "encontrada") {
+        var rota = resolucao["rota"]
+        requisicao.parametros = resolucao["parametros"]
+        requisicao.rota = rota["caminho"]
+        retorna executar_rota(aplicacao, rota, requisicao)
+    }
+    se (metodo == "POST" e caminho == "/token" e autenticacao_ativa(aplicacao)) {
+        retorna emitir_token(aplicacao, requisicao)
+    }
+    se (situacao == "metodo_nao_permitido") {
+        var permitidos = resolucao["metodos"].juntar(", ")
+        var resposta_405: dicionário = resposta_texto(200, permitidos, "text/plain; charset=utf-8")
+        se (metodo != "OPTIONS") {
+            var corpo_405 = { "erro": "Método não permitido", "metodosAceitos": permitidos }
+            resposta_405 = resposta_json(405, corpo_405)
+        }
+        adicionar_cabecalho(resposta_405, "Allow", permitidos)
+        retorna resposta_405
+    }
+    se (situacao == "caminho_invalido") {
+        var corpo_400 = { "erro": "Caminho inválido", "caminho": caminho }
+        retorna resposta_json(400, corpo_400)
+    }
+    se (prefere_json(requisicao)) {
+        var corpo_404 = { "erro": "Rota não encontrada", "caminho": caminho, "metodo": metodo }
+        retorna resposta_json(404, corpo_404)
+    }
+    retorna resposta_texto(404, paginas.pagina_nao_encontrada(metodo, caminho), "text/html; charset=utf-8")
+}
+
+// `dados`: { "metodo", "alvo", "versao", "cabecalhos", "corpo" }.
+// Devolve { "status", "cabecalhos": [[nome, valor]], "corpo", "arquivo" }.
+funcao processar_requisicao(aplicacao, dados) {
+    var configuracao_liquido = aplicacao.configuracao["liquido"]
+    var configuracao_roteador = configuracao_liquido["roteador"]
+    var requisicao: qualquer = montar_requisicao(aplicacao, dados)
+    var caminho = requisicao.caminho
+    var metodo = requisicao.metodo
+
+    var cabecalhos_comuns: dicionário = nova_resposta_http(200)
+    se (configuracao_roteador["helmet"]) { aplicar_cabecalhos_seguranca(cabecalhos_comuns, caminho) }
+    // `respondida` indica se uma etapa já montou a resposta.
+    var respondida = falso
+    var resposta_http: dicionário = nova_resposta_http(200)
+
+    se (configuracao_roteador["cors"]) {
+        se (aplicar_cors(cabecalhos_comuns, requisicao, configuracao_roteador)) {
+            resposta_http = nova_resposta_http(204)
+            respondida = verdadeiro
+        }
+    }
+
+    se (nao respondida e (metodo == "GET" ou metodo == "HEAD")) {
+        se (caminho == "/docs/openapi.json") {
+            resposta_http = resposta_json(200, documentacao.documentar(aplicacao))
+            respondida = verdadeiro
+        } senao se (caminho == "/docs") {
+            resposta_http = resposta_texto(200, documentacao.pagina_redoc("/docs/openapi.json"), "text/html; charset=utf-8")
+            respondida = verdadeiro
+        } senao {
+            var arquivo_estatico = procurar_arquivo_estatico(aplicacao, caminho)
+            se (arquivo_estatico != nulo) {
+                resposta_http = resposta_arquivo_estatico(arquivo_estatico)
+                respondida = verdadeiro
+            }
+        }
+    }
+
+    se (nao respondida) {
+        var corpo_interpretado: dicionário = interpretar_corpo(requisicao, configuracao_roteador)
+        se (corpo_interpretado["erro"] != "") {
+            var erro_corpo = { "erro": corpo_interpretado["erro"] }
+            resposta_http = resposta_json(400, erro_corpo)
+            respondida = verdadeiro
+        } senao {
+            requisicao.corpo = corpo_interpretado["corpo"]
+        }
+    }
+
+    se (nao respondida) {
+        autenticar_requisicao(aplicacao, requisicao)
+        resposta_http = resolver_e_executar(aplicacao, requisicao)
+    }
+
+    // Cabeçalhos comuns (segurança e CORS) vão antes dos definidos pela rota.
+    var cabecalhos_finais = cabecalhos_comuns["cabecalhos"]
+    para cada par em resposta_http["cabecalhos"] { cabecalhos_finais.adicionar(par) }
+    resposta_http["cabecalhos"] = cabecalhos_finais
+    resposta_http["incluir_corpo"] = metodo != "HEAD"
+    retorna resposta_http
+}
+
+// ── Servidor HTTP ──
+
+funcao registrar_acesso(aplicacao, metodo, alvo, resposta_http, inicio_ms) {
+    var configuracao_liquido = aplicacao.configuracao["liquido"]
+    var duracao = tempo.monotonicoMilissegundos() - inicio_ms
+    var codigo = resposta_http["status"]
+    se (configuracao_liquido["roteador"]["morgan"]) {
+        escreva(metodo + " " + alvo + " " + texto(codigo) + " " + texto(duracao) + " ms - " + texto(mensagens.tamanho_em_bytes(resposta_http["corpo"])))
+    } senao se (configuracao_liquido["verboso"] ou codigo >= 500) {
+        var situacao = "aceito"
+        se (codigo >= 500) { situacao = "rejeitado" }
+        escreva("[Liquido] " + metodo + " " + alvo + " → " + situacao + " (" + texto(codigo) + ") (" + texto(duracao) + " ms)")
+    }
+}
+
+// Lê um corpo com `Transfer-Encoding: chunked`. Devolve o texto, ou nulo em caso de erro.
+funcao ler_corpo_em_partes(conexao, limite_ms) {
+    var corpo = ""
+    var limite_partes = 100000
+    enquanto (limite_partes > 0) {
+        limite_partes = limite_partes - 1
+        var linha_tamanho = rede.lerAte(conexao, "\r\n", 1024, limite_ms)
+        se (linha_tamanho == nulo) { retorna nulo }
+        var tamanho_hex = linha_tamanho.aparar().dividir(";")[0].minusculo()
+        var tamanho_parte = 0
+        para cada digito em tamanho_hex {
+            var valor_digito = "0123456789abcdef".encontrar(digito)
+            se (valor_digito < 0) { retorna nulo }
+            tamanho_parte = tamanho_parte * 16 + valor_digito
+        }
+        se (tamanho_parte == 0) {
+            rede.lerAte(conexao, "\r\n", 1024, limite_ms)
+            retorna corpo
+        }
+        se (corpo.tamanho() + tamanho_parte > tamanho_maximo_corpo) { retorna nulo }
+        var parte = rede.lerAte(conexao, "", tamanho_parte, limite_ms)
+        se (parte == nulo) { retorna nulo }
+        corpo = corpo + parte
+        rede.lerAte(conexao, "\r\n", 2, limite_ms)
+    }
+    retorna nulo
+}
+
+funcao responder(conexao, resposta_http) {
+    var incluir_corpo = verdadeiro
+    se (resposta_http.contem("incluir_corpo")) { incluir_corpo = resposta_http["incluir_corpo"] }
+    se (resposta_http["arquivo"] != nulo) {
+        rede.escrever(conexao, mensagens.montar_inicio_resposta(resposta_http["status"], resposta_http["cabecalhos"]))
+        se (incluir_corpo) { rede.escreverArquivo(conexao, resposta_http["arquivo"]) }
+        retorna
+    }
+    rede.escrever(conexao, mensagens.montar_resposta(resposta_http["status"], resposta_http["cabecalhos"], resposta_http["corpo"], incluir_corpo))
+}
+
+funcao responder_erro_conexao(conexao, codigo_status, mensagem) {
+    var cabecalhos = [["Content-Type", "text/plain; charset=utf-8"]]
+    rede.escrever(conexao, mensagens.montar_resposta(codigo_status, cabecalhos, mensagem, verdadeiro))
+}
+
+// Atende uma conexão já aceita: lê a requisição, processa e responde.
+funcao atender_conexao(aplicacao, conexao) {
+    var limite_ms = aplicacao.configuracao["liquido"]["roteador"]["tempoLimite"]
+    var inicio_ms = tempo.monotonicoMilissegundos()
+    tente {
+        var cabecalho = rede.lerAte(conexao, "\r\n\r\n", tamanho_maximo_cabecalho, limite_ms)
+        se (cabecalho == nulo ou cabecalho == "") {
+            rede.fechar(conexao)
+            retorna
+        }
+        se (nao textos.termina_com(cabecalho, "\r\n\r\n") e nao textos.termina_com(cabecalho, "\n\n")) {
+            responder_erro_conexao(conexao, 431, "Cabeçalhos da requisição muito grandes ou incompletos.")
+            rede.fechar(conexao)
+            retorna
+        }
+        var dados = mensagens.analisar_cabecalho_requisicao(cabecalho)
+        se (dados["erro"] != "") {
+            responder_erro_conexao(conexao, 400, dados["erro"])
+            rede.fechar(conexao)
+            retorna
+        }
+        var cabecalhos = dados["cabecalhos"]
+        var corpo = ""
+        se (cabecalhos.contem("expect") e cabecalhos["expect"].minusculo() == "100-continue") {
+            rede.escrever(conexao, "HTTP/1.1 100 Continue\r\n\r\n")
+        }
+        se (cabecalhos.contem("transfer-encoding") e cabecalhos["transfer-encoding"].minusculo().inclui("chunked")) {
+            corpo = ler_corpo_em_partes(conexao, limite_ms)
+            se (corpo == nulo) {
+                responder_erro_conexao(conexao, 400, "Corpo da requisição inválido.")
+                rede.fechar(conexao)
+                retorna
+            }
+        } senao se (cabecalhos.contem("content-length")) {
+            var tamanho_corpo = inteiro(cabecalhos["content-length"])
+            se (tamanho_corpo > tamanho_maximo_corpo) {
+                responder_erro_conexao(conexao, 413, "Corpo da requisição muito grande.")
+                rede.fechar(conexao)
+                retorna
+            }
+            se (tamanho_corpo > 0) {
+                corpo = rede.lerAte(conexao, "", tamanho_corpo, limite_ms)
+                se (corpo == nulo) { corpo = "" }
+            }
+        }
+        dados["corpo"] = corpo
+        var resposta_http: dicionário = processar_requisicao(aplicacao, dados)
+        responder(conexao, resposta_http)
+        registrar_acesso(aplicacao, dados["metodo"], dados["alvo"], resposta_http, inicio_ms)
+    } pegue (erro) {
+        var mensagem = "Erro desconhecido."
+        se (erro != nulo) { mensagem = "" + erro.mensagem }
+        escreva("[Liquido] Erro ao atender conexão: " + mensagem)
+        tente {
+            responder_erro_conexao(conexao, 500, "Erro interno do servidor.")
+        } pegue (erro_resposta) {
+        }
+    }
+    rede.fechar(conexao)
+}
+
+// ── Registro de rotas ──
+
+// Objeto `liquido` disponível nos arquivos de rota. Cada instância está ligada a um arquivo
+// e ao caminho de rota derivado dele.
+classe RegistradorRotas {
+    aplicacao: qualquer
+    caminho: texto
+    arquivo: texto
+
+    construtor(aplicacao, caminho, arquivo) {
+        isto.aplicacao = aplicacao
+        isto.caminho = caminho
+        isto.arquivo = arquivo
+    }
+
+    rotaGet(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaGet", isto.caminho, funcoes, isto.arquivo) }
+    rotaPost(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaPost", isto.caminho, funcoes, isto.arquivo) }
+    rotaPut(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaPut", isto.caminho, funcoes, isto.arquivo) }
+    rotaDelete(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaDelete", isto.caminho, funcoes, isto.arquivo) }
+    rotaPatch(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaPatch", isto.caminho, funcoes, isto.arquivo) }
+    rotaCopy(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaCopy", isto.caminho, funcoes, isto.arquivo) }
+    rotaHead(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaHead", isto.caminho, funcoes, isto.arquivo) }
+    rotaOptions(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaOptions", isto.caminho, funcoes, isto.arquivo) }
+    rotaPurge(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaPurge", isto.caminho, funcoes, isto.arquivo) }
+    rotaLock(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaLock", isto.caminho, funcoes, isto.arquivo) }
+    rotaUnlock(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaUnlock", isto.caminho, funcoes, isto.arquivo) }
+    rotaPropfind(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaPropfind", isto.caminho, funcoes, isto.arquivo) }
+    rotaLink(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaLink", isto.caminho, funcoes, isto.arquivo) }
+    rotaUnlink(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaUnlink", isto.caminho, funcoes, isto.arquivo) }
+    rotaView(...funcoes) { retorna isto.aplicacao.adicionarRota("rotaView", isto.caminho, funcoes, isto.arquivo) }
+
+    // Middleware que responde 401 quando a requisição não traz um token JWT válido.
+    exigirAutenticacao() {
+        retorna funcao(requisicao, resposta) {
+            se (nao requisicao.autenticado) {
+                resposta.status(401).json({ "erro": "Não autorizado" })
+            }
+        }
+    }
+}
+
+classe Aplicacao {
+    diretorioBase: texto
+    configuracao: dicionário
+    errosConfiguracao: vetor
+    configuracaoEncontrada: lógico
+    roteador: qualquer
+    diretoriosEstaticos: vetor
+    chaveSecreta: qualquer
+    usuarios: vetor
+    // Decoradores de documentação por "MÉTODO /caminho" (preenchidos pelo gerador).
+    documentacaoRotas: dicionário
+    parar: lógico
+
+    construtor(diretorio_base) {
+        isto.diretorioBase = diretorio_base
+        var carregada = centro.carregar(diretorio_base)
+        isto.configuracao = carregada["configuracao"]
+        isto.errosConfiguracao = carregada["erros"]
+        isto.configuracaoEncontrada = carregada["encontrado"]
+        isto.roteador = roteamento.criar_roteador()
+        isto.parar = falso
+        isto.chaveSecreta = nulo
+        isto.usuarios = []
+        isto.documentacaoRotas = {}
+
+        var liquido = isto.configuracao["liquido"]
+        isto.diretoriosEstaticos = []
+        var diretorio_estatico = arquivos.juntarCaminhos(diretorio_base, liquido["roteador"]["diretorioEstatico"])
+        isto.diretoriosEstaticos.adicionar(diretorio_estatico)
+        var diretorio_estilos = arquivos.juntarCaminhos(diretorio_base, liquido["estilos"]["diretorioBase"])
+        se (arquivos.caminhoAbsoluto(diretorio_estilos) != arquivos.caminhoAbsoluto(diretorio_estatico)) {
+            isto.diretoriosEstaticos.adicionar(diretorio_estilos)
+        }
+
+        para cada erro_configuracao em isto.errosConfiguracao {
+            escreva("[Liquido] Erro de configuração: " + erro_configuracao)
+        }
+
+        se (autenticacao_ativa(isto)) {
+            isto.chaveSecreta = centro.variavel_ambiente(diretorio_base, "chaveSecreta")
+            se (isto.chaveSecreta == nulo) {
+                escreva("[Liquido] Autenticação JWT ativa, mas a variável 'chaveSecreta' não foi definida (ambiente ou arquivo .ambiente). Autenticação não será ativada.")
+            }
+            var texto_usuarios = arquivos.lerTexto(arquivos.juntarCaminhos(diretorio_base, "usuarios.json"))
+            se (texto_usuarios != nulo) {
+                var usuarios_lidos = json_liquido.analisar(texto_usuarios)
+                se (usuarios_lidos["erro"] == "" e json_liquido.eh_vetor(usuarios_lidos["resultado"])) {
+                    isto.usuarios = usuarios_lidos["resultado"]
+                } senao {
+                    escreva("[Liquido] Arquivo usuarios.json inválido: esperado um vetor de { \"id\", \"email\", \"senha\" }.")
+                }
+            }
+        }
+    }
+
+    // Objeto `liquido` para um arquivo de rota.
+    registrador(caminho, arquivo) {
+        retorna RegistradorRotas(isto, caminho, arquivo)
+    }
+
+    adicionarRota(nome_metodo_rota, caminho, funcoes, arquivo) {
+        var metodo = roteamento.metodo_de_registro(nome_metodo_rota)
+        se (metodo == nulo) {
+            escreva("[Liquido] Método de rota '" + nome_metodo_rota + "' não suportado.")
+            retorna falso
+        }
+        se (funcoes.tamanho() == 0) {
+            escreva("[Liquido] Rota " + caminho + " não possui nenhuma função definida.")
+            retorna falso
+        }
+        se (nao isto.roteador.registrar(metodo, caminho, funcoes, arquivo)) {
+            escreva("[Liquido] Rota " + metodo + " " + caminho + " já foi registrada; a chamada em " + arquivo + " foi ignorada.")
+            retorna falso
+        }
+        se (isto.configuracao["liquido"]["verboso"]) {
+            escreva("[Liquido] Rota registrada: " + metodo + " " + caminho)
+        }
+        retorna verdadeiro
+    }
+
+    // Registra a documentação OpenAPI de uma rota. `texto_json` tem a forma
+    // { "documentacao": {..}, "respostas": [{..}] }, montada pelo gerador a partir dos decoradores.
+    documentarRota(nome_metodo_rota, caminho, texto_json) {
+        var metodo = roteamento.metodo_de_registro(nome_metodo_rota)
+        se (metodo == nulo) { retorna falso }
+        var analisado = json_liquido.analisar(texto_json)
+        se (analisado["erro"] != "") {
+            escreva("[Liquido] Documentação inválida para " + metodo + " " + caminho + ": " + analisado["erro"])
+            retorna falso
+        }
+        var decoradores = analisado["resultado"]
+        isto.documentacaoRotas[metodo + " " + url.normalizar_caminho(caminho)] = decoradores
+        retorna verdadeiro
+    }
+
+    processar(dados) {
+        retorna processar_requisicao(isto, dados)
+    }
+
+    // Aceita e atende uma única conexão do servidor (útil em testes).
+    atenderUma(servidor, limite_ms) {
+        var conexao = rede.aceitar(servidor, limite_ms)
+        se (conexao == nulo) { retorna falso }
+        atender_conexao(isto, conexao)
+        retorna verdadeiro
+    }
+
+    // Inicia o servidor HTTP e atende requisições até `parar` ser verdadeiro.
+    iniciar() {
+        var roteador_configuracao = isto.configuracao["liquido"]["roteador"]
+        var porta = roteador_configuracao["porta"]
+        var endereco = roteador_configuracao["endereco"]
+        var servidor = rede.escutar(endereco, porta)
+        se (servidor == nulo) {
+            escreva("[Liquido] Não foi possível iniciar o servidor na porta " + texto(porta) + ": " + rede.ultimoErro())
+            retorna falso
+        }
+        se (roteador_configuracao["cors"]) {
+            var origens: vetor = origens_cors(roteador_configuracao)
+            se (origens.tamanho() == 1 e origens[0] == "*") {
+                escreva("[Liquido] CORS habilitado para qualquer origem ('*'). Adequado apenas para desenvolvimento; em produção, restrinja com liquido.roteador.origensCors = 'https://seudominio.com.br' em configuracao.delprops.")
+            }
+        }
+        escreva("Aplicação iniciada na porta " + texto(porta))
+        enquanto (nao isto.parar) {
+            var conexao = rede.aceitar(servidor, 1000)
+            se (conexao != nulo) { atender_conexao(isto, conexao) }
+        }
+        rede.fechar(servidor)
+        retorna verdadeiro
+    }
+}
+
+funcao criar_aplicacao(diretorio_base) {
+    retorna Aplicacao(diretorio_base)
+}

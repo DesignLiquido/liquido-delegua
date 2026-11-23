@@ -1,0 +1,5 @@
+liquido.arquetipo = 'mvc'
+liquido.roteador.helmet = falso
+liquido.roteador.porta = 3123
+liquido.roteador.endereco = '127.0.0.1'
+liquido.roteador.morgan = verdadeiro

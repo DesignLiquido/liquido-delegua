@@ -1,0 +1,54 @@
+importar { grupo, teste, afirmar } de "testes"
+
+var modelos = importar("../fontes/visoes/modelos.delegua")
+
+funcao renderizar(modelo, dados) {
+    var resultado = modelos.renderizar(modelo, dados)
+    se (resultado["erro"] != "") { retorna "ERRO: " + resultado["erro"] }
+    retorna resultado["resultado"]
+}
+
+grupo("Modelos", funcao() {
+    teste("substitui variáveis com escape", funcao() {
+        var dados = { "nome": "<Ana>", "pessoa": { "idade": 30 } }
+        afirmar.igual("Olá, &lt;Ana&gt;! 30", renderizar("Olá, {{nome}}! {{pessoa.idade}}", dados))
+        afirmar.igual("<Ana>", renderizar("{{{nome}}}", dados))
+        afirmar.igual("[]", renderizar("[{{inexistente}}]", dados))
+    })
+
+    teste("blocos se e senão", funcao() {
+        var dados = { "ativo": verdadeiro, "vazio": "", "lista": [] }
+        afirmar.igual("sim", renderizar("{{#se ativo}}sim{{senao}}não{{/se}}", dados))
+        afirmar.igual("não", renderizar("{{#if vazio}}sim{{else}}não{{/if}}", dados))
+        afirmar.igual("vazia", renderizar("{{#if lista}}cheia{{else}}vazia{{/if}}", dados))
+        afirmar.igual("ok", renderizar("{{#unless vazio}}ok{{/unless}}", dados))
+    })
+
+    teste("laços cada/each com índice e contexto pai", funcao() {
+        var itens = [{ "nome": "a" }, { "nome": "b" }]
+        var dados = { "itens": itens, "prefixo": "-" }
+        afirmar.igual("0:a-;1:b-;", renderizar("{{#cada itens}}{{@indice}}:{{nome}}{{../prefixo}};{{/cada}}", dados))
+        var numeros = [1, 2, 3]
+        var dados_numeros = { "numeros": numeros }
+        afirmar.igual("1,2,3", renderizar("{{#each numeros}}{{this}}{{#unless @last}},{{/unless}}{{/each}}", dados_numeros))
+        afirmar.igual("nada", renderizar("{{#each faltando}}x{{else}}nada{{/each}}", dados_numeros))
+    })
+
+    teste("laço sobre dicionário e blocos aninhados", funcao() {
+        var cores = { "a": "azul", "v": "verde" }
+        var dados = { "cores": cores, "mostrar": verdadeiro }
+        afirmar.igual("a=azul v=verde ", renderizar("{{#se mostrar}}{{#cada cores}}{{@chave}}={{isto}} {{/cada}}{{/se}}", dados))
+    })
+
+    teste("comentários e blocos com", funcao() {
+        var dados = { "pessoa": { "nome": "Bia" } }
+        afirmar.igual("Bia", renderizar("{{! comentário }}{{#com pessoa}}{{nome}}{{/com}}{{!-- outro }} --}}", dados))
+    })
+
+    teste("informa blocos mal formados", funcao() {
+        var dados = {}
+        afirmar.verdadeiro(renderizar("{{#se x}}sem fim", dados).inclui("ERRO"))
+        afirmar.verdadeiro(renderizar("{{#se x}}a{{/cada}}", dados).inclui("ERRO"))
+        afirmar.verdadeiro(renderizar("{{/se}}", dados).inclui("ERRO"))
+    })
+})
