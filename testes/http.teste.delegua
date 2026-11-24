@@ -6,39 +6,39 @@ var cookies = importar("../fontes/http/cookies.delegua")
 var mime = importar("../fontes/http/tipos_mime.delegua")
 var roteamento = importar("../fontes/roteador/roteador.delegua")
 
-funcao textos_terminam(conteudo, sufixo) {
+funcao textosTerminam(conteudo, sufixo) {
     retorna conteudo.terminaCom(sufixo)
 }
 
 grupo("URL", funcao() {
     teste("separa caminho e consulta", funcao() {
-        var partes = url.separar_alvo("/api/x?a=1&b=2#frag")
+        var partes = url.separarAlvo("/api/x?a=1&b=2#frag")
         afirmar.igual("/api/x", partes["caminho"])
         afirmar.igual("a=1&b=2", partes["consulta"])
     })
 
     teste("analisa parâmetros de pesquisa", funcao() {
-        var consulta = url.analisar_consulta("nome=Jo%C3%A3o+Silva&vazio=&lista=1&lista=2")
+        var consulta = url.analisarConsulta("nome=Jo%C3%A3o+Silva&vazio=&lista=1&lista=2")
         afirmar.igual("João Silva", consulta["nome"])
         afirmar.igual("", consulta["vazio"])
         afirmar.igual(2, consulta["lista"].tamanho())
     })
 
     teste("normaliza caminhos", funcao() {
-        afirmar.igual("/", url.normalizar_caminho(""))
-        afirmar.igual("/a/b", url.normalizar_caminho("//a/b/"))
+        afirmar.igual("/", url.normalizarCaminho(""))
+        afirmar.igual("/a/b", url.normalizarCaminho("//a/b/"))
     })
 
     teste("recusa travessia de diretórios", funcao() {
-        afirmar.igual(nulo, url.segmentos_caminho("/a/../b"))
-        afirmar.igual(nulo, url.segmentos_caminho("/a/%2e%2e/b"))
-        afirmar.igual(2, url.segmentos_caminho("/a/b").tamanho())
+        afirmar.igual(nulo, url.segmentosCaminho("/a/../b"))
+        afirmar.igual(nulo, url.segmentosCaminho("/a/%2e%2e/b"))
+        afirmar.igual(2, url.segmentosCaminho("/a/b").tamanho())
     })
 })
 
 grupo("Mensagens HTTP", funcao() {
     teste("analisa cabeçalho de requisição", funcao() {
-        var dados = mensagens.analisar_cabecalho_requisicao("POST /api?x=1 HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nX-A: 1\r\nX-A: 2\r\n\r\n")
+        var dados = mensagens.analisarCabecalhoRequisicao("POST /api?x=1 HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nX-A: 1\r\nX-A: 2\r\n\r\n")
         afirmar.igual("", dados["erro"])
         afirmar.igual("POST", dados["metodo"])
         afirmar.igual("/api?x=1", dados["alvo"])
@@ -47,39 +47,39 @@ grupo("Mensagens HTTP", funcao() {
     })
 
     teste("recusa linha inválida", funcao() {
-        afirmar.diferente("", mensagens.analisar_cabecalho_requisicao("lixo\r\n\r\n")["erro"])
-        afirmar.diferente("", mensagens.analisar_cabecalho_requisicao("")["erro"])
+        afirmar.diferente("", mensagens.analisarCabecalhoRequisicao("lixo\r\n\r\n")["erro"])
+        afirmar.diferente("", mensagens.analisarCabecalhoRequisicao("")["erro"])
     })
 
     teste("calcula tamanho em bytes UTF-8", funcao() {
-        afirmar.igual(0, mensagens.tamanho_em_bytes(""))
-        afirmar.igual(3, mensagens.tamanho_em_bytes("abc"))
-        afirmar.igual(4, mensagens.tamanho_em_bytes("olá"))
-        afirmar.igual(6, mensagens.tamanho_em_bytes("ação"))
+        afirmar.igual(0, mensagens.tamanhoEmBytes(""))
+        afirmar.igual(3, mensagens.tamanhoEmBytes("abc"))
+        afirmar.igual(4, mensagens.tamanhoEmBytes("olá"))
+        afirmar.igual(6, mensagens.tamanhoEmBytes("ação"))
     })
 
     teste("monta resposta", funcao() {
         var cabecalhos = [["Content-Type", "text/plain; charset=utf-8"]]
-        var resposta = mensagens.montar_resposta(200, cabecalhos, "olá", verdadeiro)
+        var resposta = mensagens.montarResposta(200, cabecalhos, "olá", verdadeiro)
         afirmar.verdadeiro(resposta.inclui("HTTP/1.1 200 OK\r\n"))
         afirmar.verdadeiro(resposta.inclui("Content-Length: 4\r\n"))
-        afirmar.verdadeiro(textos_terminam(resposta, "\r\n\r\nolá"))
+        afirmar.verdadeiro(textosTerminam(resposta, "\r\n\r\nolá"))
     })
 
     teste("respostas 204 e HEAD não têm corpo", funcao() {
-        var sem_cabecalhos = []
-        var resposta = mensagens.montar_resposta(204, sem_cabecalhos, "x", verdadeiro)
+        var semCabecalhos = []
+        var resposta = mensagens.montarResposta(204, semCabecalhos, "x", verdadeiro)
         afirmar.falso(resposta.inclui("Content-Length"))
-        afirmar.verdadeiro(textos_terminam(resposta, "\r\n\r\n"))
-        var cabeca = mensagens.montar_resposta(200, sem_cabecalhos, "abc", falso)
+        afirmar.verdadeiro(textosTerminam(resposta, "\r\n\r\n"))
+        var cabeca = mensagens.montarResposta(200, semCabecalhos, "abc", falso)
         afirmar.verdadeiro(cabeca.inclui("Content-Length: 3"))
-        afirmar.verdadeiro(textos_terminam(cabeca, "\r\n\r\n"))
+        afirmar.verdadeiro(textosTerminam(cabeca, "\r\n\r\n"))
     })
 })
 
 grupo("Cookies e tipos", funcao() {
     teste("analisa cookies", funcao() {
-        var lidos = cookies.analisar_cookies("sessao=abc; tema=\"escuro\"; nome=Jo%C3%A3o")
+        var lidos = cookies.analisarCookies("sessao=abc; tema=\"escuro\"; nome=Jo%C3%A3o")
         afirmar.igual("abc", lidos["sessao"])
         afirmar.igual("escuro", lidos["tema"])
         afirmar.igual("João", lidos["nome"])
@@ -87,21 +87,21 @@ grupo("Cookies e tipos", funcao() {
 
     teste("monta Set-Cookie", funcao() {
         var opcoes = { "somenteHttp": verdadeiro, "idadeMaxima": 60, "mesmoSitio": "Lax" }
-        afirmar.igual("a=b%20c; Path=/; Max-Age=60; HttpOnly; SameSite=Lax", cookies.montar_set_cookie("a", "b c", opcoes))
+        afirmar.igual("a=b%20c; Path=/; Max-Age=60; HttpOnly; SameSite=Lax", cookies.montarSetCookie("a", "b c", opcoes))
     })
 
     teste("tipos MIME", funcao() {
-        afirmar.igual("text/css; charset=utf-8", mime.tipo_por_caminho("publico/css/a.css"))
-        afirmar.igual("image/png", mime.tipo_por_caminho("x/Y.PNG"))
-        afirmar.igual("application/octet-stream", mime.tipo_por_caminho("x/sem-extensao"))
-        afirmar.verdadeiro(mime.eh_texto("a.html"))
-        afirmar.falso(mime.eh_texto("a.png"))
+        afirmar.igual("text/css; charset=utf-8", mime.tipoPorCaminho("publico/css/a.css"))
+        afirmar.igual("image/png", mime.tipoPorCaminho("x/Y.PNG"))
+        afirmar.igual("application/octet-stream", mime.tipoPorCaminho("x/sem-extensao"))
+        afirmar.verdadeiro(mime.ehTexto("a.html"))
+        afirmar.falso(mime.ehTexto("a.png"))
     })
 })
 
 grupo("Roteador", funcao() {
     teste("resolve rotas estáticas e com parâmetros", funcao() {
-        var roteador = roteamento.criar_roteador()
+        var roteador = roteamento.criarRoteador()
         var funcoes = ["f"]
         roteador.registrar("GET", "/", funcoes, "rotas/inicial.delegua")
         roteador.registrar("GET", "/api/clientes/:id", funcoes, "rotas/api/clientes/[id].delegua")
@@ -120,19 +120,19 @@ grupo("Roteador", funcao() {
     })
 
     teste("método não permitido e não encontrada", funcao() {
-        var roteador = roteamento.criar_roteador()
+        var roteador = roteamento.criarRoteador()
         var funcoes = ["f"]
         roteador.registrar("GET", "/x", funcoes, "")
         roteador.registrar("POST", "/x", funcoes, "")
         var resultado = roteador.resolver("DELETE", "/x")
-        afirmar.igual("metodo_nao_permitido", resultado["situacao"])
+        afirmar.igual("metodoNaoPermitido", resultado["situacao"])
         afirmar.verdadeiro(resultado["metodos"].inclui("GET"))
         afirmar.verdadeiro(resultado["metodos"].inclui("POST"))
-        afirmar.igual("nao_encontrada", roteador.resolver("GET", "/y")["situacao"])
+        afirmar.igual("naoEncontrada", roteador.resolver("GET", "/y")["situacao"])
     })
 
     teste("HEAD usa GET e duplicatas são recusadas", funcao() {
-        var roteador = roteamento.criar_roteador()
+        var roteador = roteamento.criarRoteador()
         var funcoes = ["f"]
         afirmar.verdadeiro(roteador.registrar("GET", "/x", funcoes, ""))
         afirmar.falso(roteador.registrar("get", "/x/", funcoes, ""))
@@ -140,8 +140,8 @@ grupo("Roteador", funcao() {
     })
 
     teste("nomes de métodos de registro", funcao() {
-        afirmar.igual("GET", roteamento.metodo_de_registro("rotaGet"))
-        afirmar.igual("PROPFIND", roteamento.metodo_de_registro("rotaPropfind"))
-        afirmar.igual(nulo, roteamento.metodo_de_registro("rotaInexistente"))
+        afirmar.igual("GET", roteamento.metodoDeRegistro("rotaGet"))
+        afirmar.igual("PROPFIND", roteamento.metodoDeRegistro("rotaPropfind"))
+        afirmar.igual(nulo, roteamento.metodoDeRegistro("rotaInexistente"))
     })
 })

@@ -2,18 +2,18 @@
 importar tudo como url de "./url.delegua"
 importar tudo como textos de "../utilidades/texto.delegua"
 
-funcao analisar_cookies(cabecalho_cookie) {
+funcao analisarCookies(cabecalhoCookie) {
     var resultado = {}
-    se (cabecalho_cookie == nulo ou cabecalho_cookie == "") { retorna resultado }
-    para cada par em ("" + cabecalho_cookie).dividir(";") {
-        var partes = textos.dividir_primeira(par.aparar(), "=")
+    se (cabecalhoCookie == nulo ou cabecalhoCookie == "") { retorna resultado }
+    para cada par em ("" + cabecalhoCookie).dividir(";") {
+        var partes = textos.dividirPrimeira(par.aparar(), "=")
         se (partes.tamanho() < 2 ou partes[0] == "") { continua }
-        var valor_cookie = partes[1].aparar()
-        se (textos.comeca_com(valor_cookie, "\"") e textos.termina_com(valor_cookie, "\"") e valor_cookie.tamanho() >= 2) {
-            valor_cookie = valor_cookie.subtexto(1, valor_cookie.tamanho() - 1)
+        var valorCookie = partes[1].aparar()
+        se (textos.comecaCom(valorCookie, "\"") e textos.terminaCom(valorCookie, "\"") e valorCookie.tamanho() >= 2) {
+            valorCookie = valorCookie.subtexto(1, valorCookie.tamanho() - 1)
         }
         se (nao resultado.contem(partes[0])) {
-            resultado[partes[0]] = url.decodificar(valor_cookie)
+            resultado[partes[0]] = url.decodificar(valorCookie)
         }
     }
     retorna resultado
@@ -21,8 +21,8 @@ funcao analisar_cookies(cabecalho_cookie) {
 
 // Opções aceitas (nomes em português): caminho, dominio, idadeMaxima (segundos), expira (texto HTTP-date),
 // seguro, somenteHttp, mesmoSitio ("Strict", "Lax", "None").
-funcao montar_set_cookie(nome, valor_cookie, opcoes) {
-    var partes = [nome + "=" + url.codificar(valor_cookie)]
+funcao montarSetCookie(nome, valorCookie, opcoes) {
+    var partes = [nome + "=" + url.codificar(valorCookie)]
     var caminho = "/"
     se (opcoes != nulo e opcoes.contem("caminho")) { caminho = opcoes["caminho"] }
     partes.adicionar("Path=" + caminho)

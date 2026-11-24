@@ -5,7 +5,7 @@
 importar tudo como textos de "../utilidades/texto.delegua"
 
 // Remove um comentário `//` que esteja fora de textos.
-funcao remover_comentario(linha) {
+funcao removerComentario(linha) {
     var aspas = ""
     para (var i = 0; i < linha.tamanho(); i = i + 1) {
         var c = linha[i]
@@ -25,8 +25,8 @@ funcao remover_comentario(linha) {
 }
 
 // Interpreta o valor de uma propriedade. Devolve { "ok": lógico, "dado": ... }.
-funcao interpretar_valor(texto_valor) {
-    var bruto = texto_valor.aparar()
+funcao interpretarValor(textoValor) {
+    var bruto = textoValor.aparar()
     se (bruto == "verdadeiro") { retorna { "ok": verdadeiro, "dado": verdadeiro } }
     se (bruto == "falso") { retorna { "ok": verdadeiro, "dado": falso } }
     se (bruto == "nulo") { retorna { "ok": verdadeiro, "dado": nulo } }
@@ -41,50 +41,50 @@ funcao interpretar_valor(texto_valor) {
             var interno = bruto.subtexto(1, bruto.tamanho() - 1).aparar()
             se (interno != "") {
                 // Laço por índice: `para cada` termina cedo com chamadas recursivas.
-                var partes_vetor = interno.dividir(",")
-                para (var i = 0; i < partes_vetor.tamanho(); i = i + 1) {
-                    var item: dicionário = interpretar_valor(partes_vetor[i])
+                var partesVetor = interno.dividir(",")
+                para (var i = 0; i < partesVetor.tamanho(); i = i + 1) {
+                    var item: dicionário = interpretarValor(partesVetor[i])
                     se (nao item["ok"]) { retorna { "ok": falso, "dado": nulo } }
-                    var dado_item = item["dado"]
-                    itens.adicionar(dado_item)
+                    var dadoItem = item["dado"]
+                    itens.adicionar(dadoItem)
                 }
             }
             retorna { "ok": verdadeiro, "dado": itens }
         }
     }
-    var eh_numero = bruto != ""
+    var ehNumero = bruto != ""
     para cada c em bruto {
-        se (nao "-0123456789.".inclui(c)) { eh_numero = falso }
+        se (nao "-0123456789.".inclui(c)) { ehNumero = falso }
     }
-    se (eh_numero e bruto != "-" e bruto != ".") { retorna { "ok": verdadeiro, "dado": numero(bruto) } }
+    se (ehNumero e bruto != "-" e bruto != ".") { retorna { "ok": verdadeiro, "dado": numero(bruto) } }
     retorna { "ok": falso, "dado": nulo }
 }
 
 // Analisa o texto DelProps. Devolve { "entradas": [ { "caminho": [..], "dado": .., "linha": n } ], "erros": [..] }.
-funcao analisar(texto_delprops) {
+funcao analisar(textoDelprops) {
     var entradas = []
     var erros = []
-    var linhas = textos.substituir_todos("" + texto_delprops, "\r\n", "\n").dividir("\n")
-    para (var numero_linha = 0; numero_linha < linhas.tamanho(); numero_linha = numero_linha + 1) {
-        var linha = remover_comentario(linhas[numero_linha]).aparar()
+    var linhas = textos.substituirTodos("" + textoDelprops, "\r\n", "\n").dividir("\n")
+    para (var numeroLinha = 0; numeroLinha < linhas.tamanho(); numeroLinha = numeroLinha + 1) {
+        var linha = removerComentario(linhas[numeroLinha]).aparar()
         se (linha == "") { continua }
         var igual = linha.encontrar("=")
         se (igual <= 0) {
-            erros.adicionar("[Linha " + texto(numero_linha + 1) + "] Esperado 'propriedade = valor'.")
+            erros.adicionar("[Linha " + texto(numeroLinha + 1) + "] Esperado 'propriedade = valor'.")
             continua
         }
         var nome = linha.subtexto(0, igual).aparar()
-        var resultado_valor: dicionário = interpretar_valor(linha.subtexto(igual + 1, linha.tamanho()))
-        se (nao resultado_valor["ok"]) {
-            erros.adicionar("[Linha " + texto(numero_linha + 1) + "] Valor inválido para '" + nome + "'.")
+        var resultadoValor: dicionário = interpretarValor(linha.subtexto(igual + 1, linha.tamanho()))
+        se (nao resultadoValor["ok"]) {
+            erros.adicionar("[Linha " + texto(numeroLinha + 1) + "] Valor inválido para '" + nome + "'.")
             continua
         }
         var caminho = []
         para cada parte em nome.dividir(".") {
             caminho.adicionar(parte.aparar())
         }
-        var dado = resultado_valor["dado"]
-        var entrada = { "caminho": caminho, "dado": dado, "linha": numero_linha + 1 }
+        var dado = resultadoValor["dado"]
+        var entrada = { "caminho": caminho, "dado": dado, "linha": numeroLinha + 1 }
         entradas.adicionar(entrada)
     }
     retorna { "entradas": entradas, "erros": erros }

@@ -26,14 +26,14 @@
 importar tudo como argumentos de "argumentos"
 importar tudo como arquivos de "arquivos"
 importar tudo como processo de "processo"
-importar tudo como liquido_pacote de "./liquido.delegua"
+importar tudo como liquidoPacote de "./liquido.delegua"
 importar tudo como centro de "./configuracao/centro_configuracoes.delegua"
-importar tudo como modelos_projeto de "./ilc/modelos_projeto.delegua"
+importar tudo como modelosProjeto de "./ilc/modelos_projeto.delegua"
 importar tudo como textos de "./utilidades/texto.delegua"
 
-funcao opcao(nome, padrao_opcao) {
-    se (argumentos.temArgumento(nome)) { retorna argumentos.obterArgumento(nome, padrao_opcao) }
-    retorna padrao_opcao
+funcao opcao(nome, padraoOpcao) {
+    se (argumentos.temArgumento(nome)) { retorna argumentos.obterArgumento(nome, padraoOpcao) }
+    retorna padraoOpcao
 }
 
 // Argumentos posicionais (sem as opções `--nome valor`).
@@ -43,8 +43,8 @@ funcao posicionais() {
     var i = 0
     enquanto (i < todos.tamanho()) {
         var atual = "" + todos[i]
-        se (textos.comeca_com(atual, "--")) {
-            se (nao atual.inclui("=") e i + 1 < todos.tamanho() e nao textos.comeca_com("" + todos[i + 1], "-")) { i = i + 1 }
+        se (textos.comecaCom(atual, "--")) {
+            se (nao atual.inclui("=") e i + 1 < todos.tamanho() e nao textos.comecaCom("" + todos[i + 1], "-")) { i = i + 1 }
         } senao {
             lista.adicionar(atual)
         }
@@ -53,71 +53,71 @@ funcao posicionais() {
     retorna lista
 }
 
-funcao diretorio_projeto() {
+funcao diretorioProjeto() {
     retorna opcao("diretorio", arquivos.diretorioAtual())
 }
 
-funcao linguagem_do_projeto(diretorio) {
+funcao linguagemDoProjeto(diretorio) {
     var carregada = centro.carregar(diretorio)
     retorna carregada["configuracao"]["liquido"]["linguagem"]
 }
 
 funcao gerar(diretorio) {
-    var caminho = liquido_pacote.gerar_aplicacao(diretorio, linguagem_do_projeto(diretorio), opcao("pacote", "liquido"))
+    var caminho = liquidoPacote.gerarAplicacao(diretorio, linguagemDoProjeto(diretorio), opcao("pacote", "liquido"))
     se (caminho != "") { escreva("Programa gerado: " + caminho) }
     retorna caminho
 }
 
 // Executa o programa gerado com o interpretador configurado. Devolve o código de saída.
-funcao executar_programa(caminho_relativo, diretorio) {
-    var caminho_programa = arquivos.caminhoAbsoluto(caminho_relativo)
+funcao executarPrograma(caminhoRelativo, diretorio) {
+    var caminhoPrograma = arquivos.caminhoAbsoluto(caminhoRelativo)
     var interpretador = processo.variavelAmbiente("LIQUIDO_INTERPRETADOR")
     se (interpretador == nulo ou interpretador == "") { interpretador = "delegua" }
-    se (textos.termina_com(interpretador, ".js")) {
-        var argumentos_node = [interpretador, caminho_programa]
-        retorna processo.executar("node", argumentos_node, diretorio)
+    se (textos.terminaCom(interpretador, ".js")) {
+        var argumentosNode = [interpretador, caminhoPrograma]
+        retorna processo.executar("node", argumentosNode, diretorio)
     }
-    var argumentos_interpretador = [caminho_programa]
-    retorna processo.executar(interpretador, argumentos_interpretador, diretorio)
+    var argumentosInterpretador = [caminhoPrograma]
+    retorna processo.executar(interpretador, argumentosInterpretador, diretorio)
 }
 
-funcao comando_servir() {
-    var diretorio = diretorio_projeto()
+funcao comandoServir() {
+    var diretorio = diretorioProjeto()
     var caminho = gerar(diretorio)
     se (caminho == "") { retorna 1 }
-    retorna executar_programa(caminho, diretorio)
+    retorna executarPrograma(caminho, diretorio)
 }
 
-funcao comando_simular(arquivo_requisicoes) {
-    se (arquivo_requisicoes == nulo) {
+funcao comandoSimular(arquivoRequisicoes) {
+    se (arquivoRequisicoes == nulo) {
         escreva("Uso: liquido simular <arquivo.json>")
         retorna 1
     }
-    var diretorio = diretorio_projeto()
+    var diretorio = diretorioProjeto()
     var caminho = gerar(diretorio)
     se (caminho == "") { retorna 1 }
-    processo.definirVariavelAmbiente("LIQUIDO_SIMULAR", arquivos.caminhoAbsoluto(arquivo_requisicoes))
-    retorna executar_programa(caminho, diretorio)
+    processo.definirVariavelAmbiente("LIQUIDO_SIMULAR", arquivos.caminhoAbsoluto(arquivoRequisicoes))
+    retorna executarPrograma(caminho, diretorio)
 }
 
-funcao comando_documentar() {
-    var diretorio = diretorio_projeto()
+funcao comandoDocumentar() {
+    var diretorio = diretorioProjeto()
     var caminho = gerar(diretorio)
     se (caminho == "") { retorna 1 }
     var saida = opcao("saida", arquivos.juntarCaminhos(diretorio, "openapi.json"))
     processo.definirVariavelAmbiente("LIQUIDO_DOCUMENTAR", arquivos.caminhoAbsoluto(saida))
-    retorna executar_programa(caminho, diretorio)
+    retorna executarPrograma(caminho, diretorio)
 }
 
-funcao comando_estilos() {
-    var diretorio = diretorio_projeto()
+funcao comandoEstilos() {
+    var diretorio = diretorioProjeto()
     var carregada = centro.carregar(diretorio)
-    var quantidade = liquido_pacote.escrever_estilos(diretorio, carregada["configuracao"]["liquido"]["estilos"]["diretorioBase"])
+    var quantidade = liquidoPacote.escreverEstilos(diretorio, carregada["configuracao"]["liquido"]["estilos"]["diretorioBase"])
     escreva(texto(quantidade) + " arquivo(s) de estilo convertido(s).")
     retorna 0
 }
 
-funcao escrever_arquivo_projeto(diretorio, relativo, conteudo) {
+funcao escreverArquivoProjeto(diretorio, relativo, conteudo) {
     var caminho = diretorio
     var partes = relativo.dividir("/")
     para (var i = 0; i < partes.tamanho(); i = i + 1) { caminho = arquivos.juntarCaminhos(caminho, partes[i]) }
@@ -134,7 +134,7 @@ funcao escrever_arquivo_projeto(diretorio, relativo, conteudo) {
     retorna falso
 }
 
-funcao comando_novo(nome) {
+funcao comandoNovo(nome) {
     se (nome == nulo ou nome == "") {
         escreva("Uso: liquido novo <nome-do-projeto> [--arquetipo mvc|rest]")
         retorna 1
@@ -149,16 +149,16 @@ funcao comando_novo(nome) {
         escreva("O diretório " + diretorio + " já existe.")
         retorna 1
     }
-    escrever_arquivo_projeto(diretorio, "configuracao.delprops", modelos_projeto.configuracao(arquetipo))
-    escrever_arquivo_projeto(diretorio, "LEIAME.md", modelos_projeto.leiame(nome, arquetipo))
-    escrever_arquivo_projeto(diretorio, ".gitignore", ".liquido/\npacotes/\n")
+    escreverArquivoProjeto(diretorio, "configuracao.delprops", modelosProjeto.configuracao(arquetipo))
+    escreverArquivoProjeto(diretorio, "LEIAME.md", modelosProjeto.leiame(nome, arquetipo))
+    escreverArquivoProjeto(diretorio, ".gitignore", ".liquido/\npacotes/\n")
     se (arquetipo == "mvc") {
-        escrever_arquivo_projeto(diretorio, "rotas/inicial.delegua", modelos_projeto.rota_mvc())
-        escrever_arquivo_projeto(diretorio, "visoes/inicial.lmht", modelos_projeto.visao_inicial())
-        escrever_arquivo_projeto(diretorio, "estilos/principal.foles", modelos_projeto.estilo_principal())
+        escreverArquivoProjeto(diretorio, "rotas/inicial.delegua", modelosProjeto.rotaMvc())
+        escreverArquivoProjeto(diretorio, "visoes/inicial.lmht", modelosProjeto.visaoInicial())
+        escreverArquivoProjeto(diretorio, "estilos/principal.foles", modelosProjeto.estiloPrincipal())
         arquivos.criarDiretorio(arquivos.juntarCaminhos(arquivos.juntarCaminhos(diretorio, "publico"), "css"))
     } senao {
-        escrever_arquivo_projeto(diretorio, "rotas/inicial.delegua", modelos_projeto.rota_rest())
+        escreverArquivoProjeto(diretorio, "rotas/inicial.delegua", modelosProjeto.rotaRest())
         arquivos.criarDiretorio(arquivos.juntarCaminhos(diretorio, "publico"))
     }
     escreva("")
@@ -167,7 +167,7 @@ funcao comando_novo(nome) {
 }
 
 // "clientes/[id]" ou "/clientes/:id" -> "clientes/[id]".
-funcao caminho_em_arquivo(caminho) {
+funcao caminhoEmArquivo(caminho) {
     var segmentos = []
     para cada segmento em ("" + caminho).dividir("/") {
         se (segmento == "") { continua }
@@ -177,33 +177,33 @@ funcao caminho_em_arquivo(caminho) {
     retorna segmentos.juntar("/")
 }
 
-funcao comando_gerar(tipo_gerado, caminho) {
-    se (tipo_gerado == nulo ou caminho == nulo) {
+funcao comandoGerar(tipoGerado, caminho) {
+    se (tipoGerado == nulo ou caminho == nulo) {
         escreva("Uso: liquido gerar rota <caminho> [--metodos get,post] | liquido gerar visao <caminho>")
         retorna 1
     }
-    var diretorio = diretorio_projeto()
-    var relativo = caminho_em_arquivo(caminho)
+    var diretorio = diretorioProjeto()
+    var relativo = caminhoEmArquivo(caminho)
     var carregada = centro.carregar(diretorio)
     var arquetipo = carregada["configuracao"]["liquido"]["arquetipo"]
-    se (tipo_gerado == "rota") {
+    se (tipoGerado == "rota") {
         var metodos = []
         para cada metodo em ("" + opcao("metodos", "get")).dividir(",") {
             se (metodo.aparar() != "") { metodos.adicionar(metodo.aparar()) }
         }
-        se (escrever_arquivo_projeto(diretorio, "rotas/" + relativo + ".delegua", modelos_projeto.rota_gerada(metodos, arquetipo))) { retorna 0 }
+        se (escreverArquivoProjeto(diretorio, "rotas/" + relativo + ".delegua", modelosProjeto.rotaGerada(metodos, arquetipo))) { retorna 0 }
         retorna 1
     }
-    se (tipo_gerado == "visao" ou tipo_gerado == "visão") {
-        var nome_arquivo = relativo + ".lmht"
+    se (tipoGerado == "visao" ou tipoGerado == "visão") {
+        var nomeArquivo = relativo + ".lmht"
         se (relativo.terminaCom("]")) {
             var partes = relativo.dividir("/")
-            nome_arquivo = partes.fatiar(0, partes.tamanho() - 1).juntar("/") + "/detalhes.lmht"
+            nomeArquivo = partes.fatiar(0, partes.tamanho() - 1).juntar("/") + "/detalhes.lmht"
         }
-        se (escrever_arquivo_projeto(diretorio, "visoes/" + nome_arquivo, modelos_projeto.visao_gerada(relativo))) { retorna 0 }
+        se (escreverArquivoProjeto(diretorio, "visoes/" + nomeArquivo, modelosProjeto.visaoGerada(relativo))) { retorna 0 }
         retorna 1
     }
-    escreva("Tipo desconhecido para gerar: " + tipo_gerado + ". Use 'rota' ou 'visao'.")
+    escreva("Tipo desconhecido para gerar: " + tipoGerado + ". Use 'rota' ou 'visao'.")
     retorna 1
 }
 
@@ -216,16 +216,16 @@ funcao principal() {
     se (lista.tamanho() > 1) { primeiro = lista[1] }
     se (lista.tamanho() > 2) { segundo = lista[2] }
 
-    se (comando == "servir" ou comando == "iniciar") { retorna comando_servir() }
+    se (comando == "servir" ou comando == "iniciar") { retorna comandoServir() }
     se (comando == "gerar-aplicacao") {
-        se (gerar(diretorio_projeto()) == "") { retorna 1 }
+        se (gerar(diretorioProjeto()) == "") { retorna 1 }
         retorna 0
     }
-    se (comando == "simular") { retorna comando_simular(primeiro) }
-    se (comando == "documentar") { retorna comando_documentar() }
-    se (comando == "estilos") { retorna comando_estilos() }
-    se (comando == "novo") { retorna comando_novo(primeiro) }
-    se (comando == "gerar") { retorna comando_gerar(primeiro, segundo) }
+    se (comando == "simular") { retorna comandoSimular(primeiro) }
+    se (comando == "documentar") { retorna comandoDocumentar() }
+    se (comando == "estilos") { retorna comandoEstilos() }
+    se (comando == "novo") { retorna comandoNovo(primeiro) }
+    se (comando == "gerar") { retorna comandoGerar(primeiro, segundo) }
     se (comando == "banco") {
         escreva("O comando 'banco' ainda não é suportado pelo Líquido em Delégua: falta um pacote LinConEs para Delégua.")
         retorna 1
@@ -235,5 +235,5 @@ funcao principal() {
     retorna 1
 }
 
-var codigo_saida = principal()
-se (codigo_saida != 0) { processo.sair(codigo_saida) }
+var codigoSaida = principal()
+se (codigoSaida != 0) { processo.sair(codigoSaida) }

@@ -15,48 +15,48 @@ funcao codificar(componente) {
 }
 
 // Separa "/caminho?a=1#x" em { "caminho": "/caminho", "consulta": "a=1" }.
-funcao separar_alvo(alvo) {
-    var texto_alvo = "" + alvo
-    var posicao_fragmento = texto_alvo.encontrar("#")
-    se (posicao_fragmento >= 0) { texto_alvo = texto_alvo.subtexto(0, posicao_fragmento) }
-    var posicao_consulta = texto_alvo.encontrar("?")
-    se (posicao_consulta < 0) {
-        retorna { "caminho": texto_alvo, "consulta": "" }
+funcao separarAlvo(alvo) {
+    var textoAlvo = "" + alvo
+    var posicaoFragmento = textoAlvo.encontrar("#")
+    se (posicaoFragmento >= 0) { textoAlvo = textoAlvo.subtexto(0, posicaoFragmento) }
+    var posicaoConsulta = textoAlvo.encontrar("?")
+    se (posicaoConsulta < 0) {
+        retorna { "caminho": textoAlvo, "consulta": "" }
     }
     retorna {
-        "caminho": texto_alvo.subtexto(0, posicao_consulta),
-        "consulta": texto_alvo.subtexto(posicao_consulta + 1, texto_alvo.tamanho())
+        "caminho": textoAlvo.subtexto(0, posicaoConsulta),
+        "consulta": textoAlvo.subtexto(posicaoConsulta + 1, textoAlvo.tamanho())
     }
 }
 
 // Analisa "a=1&b=dois&b=tres" em um dicionário. Chaves repetidas viram vetores, como no Express.
-funcao analisar_consulta(consulta) {
+funcao analisarConsulta(consulta) {
     var resultado = {}
     se (consulta == nulo ou consulta == "") { retorna resultado }
     para cada par em ("" + consulta).dividir("&") {
         se (par == "") { continua }
-        var partes = textos.dividir_primeira(par, "=")
+        var partes = textos.dividirPrimeira(par, "=")
         var chave = decodificar(partes[0])
-        var valor_par = ""
-        se (partes.tamanho() > 1) { valor_par = decodificar(partes[1]) }
+        var valorPar = ""
+        se (partes.tamanho() > 1) { valorPar = decodificar(partes[1]) }
         se (resultado.contem(chave)) {
             var existente = resultado[chave]
-            var tipo_existente = tipo de existente
-            se (tipo_existente == "vetor") {
-                existente.adicionar(valor_par)
+            var tipoExistente = tipo de existente
+            se (tipoExistente == "vetor") {
+                existente.adicionar(valorPar)
             } senao {
-                var lista = [existente, valor_par]
+                var lista = [existente, valorPar]
                 resultado[chave] = lista
             }
         } senao {
-            resultado[chave] = valor_par
+            resultado[chave] = valorPar
         }
     }
     retorna resultado
 }
 
 // Normaliza o caminho: decodifica, remove barras repetidas e a barra final (exceto na raiz).
-funcao normalizar_caminho(caminho) {
+funcao normalizarCaminho(caminho) {
     var segmentos = []
     para cada segmento em ("" + caminho).dividir("/") {
         se (segmento != "") { segmentos.adicionar(segmento) }
@@ -65,7 +65,7 @@ funcao normalizar_caminho(caminho) {
 }
 
 // Segmentos decodificados de um caminho. Recusa segmentos "." e ".." (devolve nulo).
-funcao segmentos_caminho(caminho) {
+funcao segmentosCaminho(caminho) {
     var segmentos = []
     para cada segmento em ("" + caminho).dividir("/") {
         se (segmento == "") { continua }

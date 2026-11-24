@@ -51,6 +51,6 @@ classe Requisicao {
     }
 }
 
-funcao criar_requisicao() {
+funcao criarRequisicao() {
     retorna Requisicao()
 }

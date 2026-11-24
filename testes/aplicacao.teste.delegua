@@ -2,24 +2,24 @@ importar { grupo, teste, afirmar } de "testes"
 importar tudo como rede de "rede"
 
 var nucleo = importar("../fontes/nucleo/aplicacao.delegua")
-var json_liquido = importar("../fontes/utilidades/json.delegua")
+var jsonLiquido = importar("../fontes/utilidades/json.delegua")
 var jwt = importar("../fontes/autenticacao/jwt.delegua")
 
 var base = "testes/exemplos/aplicacao"
 
-funcao requisicao_http(metodo, alvo, cabecalhos, corpo) {
+funcao requisicaoHttp(metodo, alvo, cabecalhos, corpo) {
     retorna { "metodo": metodo, "alvo": alvo, "versao": "HTTP/1.1", "cabecalhos": cabecalhos, "corpo": corpo }
 }
 
-funcao cabecalho_resposta(resposta_http, nome) {
-    para cada par em resposta_http["cabecalhos"] {
+funcao cabecalhoResposta(respostaHttp, nome) {
+    para cada par em respostaHttp["cabecalhos"] {
         se (par[0].minusculo() == nome.minusculo()) { retorna par[1] }
     }
     retorna nulo
 }
 
-funcao criar_aplicacao_teste() {
-    var aplicacao = nucleo.criar_aplicacao(base)
+funcao criarAplicacaoTeste() {
+    var aplicacao = nucleo.criarAplicacao(base)
     var raiz = aplicacao.registrador("/", "rotas/inicial.delegua")
     raiz.rotaGet(funcao(requisicao, resposta) {
         resposta.lmht({ "nome": "Mundo" })
@@ -38,11 +38,11 @@ funcao criar_aplicacao_teste() {
             retorna resposta.enviar("Não autorizado").status(401)
         }
     }
-    funcao adicionar_cabecalho(requisicao, resposta) {
+    funcao adicionarCabecalho(requisicao, resposta) {
         resposta.cabecalho("X-Middleware", "sim").status(200)
     }
     var protegida = aplicacao.registrador("/protegida", "rotas/protegida.delegua")
-    protegida.rotaGet(autenticar, adicionar_cabecalho, funcao(requisicao, resposta) {
+    protegida.rotaGet(autenticar, adicionarCabecalho, funcao(requisicao, resposta) {
         resposta.enviar("Rota protegida")
     })
     protegida.rotaDelete(protegida.exigirAutenticacao(), funcao(requisicao, resposta) {
@@ -74,7 +74,7 @@ funcao criar_aplicacao_teste() {
     retorna aplicacao
 }
 
-var aplicacao = criar_aplicacao_teste()
+var aplicacao = criarAplicacaoTeste()
 
 grupo("Aplicação: rotas", funcao() {
     teste("carrega a configuração do projeto", funcao() {
@@ -85,123 +85,123 @@ grupo("Aplicação: rotas", funcao() {
     })
 
     teste("visão LMHT com valores", funcao() {
-        var resposta_http = aplicacao.processar(requisicao_http("GET", "/", {}, ""))
-        afirmar.igual(200, resposta_http["status"])
-        afirmar.igual("text/html; charset=utf-8", cabecalho_resposta(resposta_http, "content-type"))
-        afirmar.verdadeiro(resposta_http["corpo"].inclui("<h1>Olá, Mundo!</h1>"))
-        afirmar.igual("nosniff", cabecalho_resposta(resposta_http, "X-Content-Type-Options"))
+        var respostaHttp = aplicacao.processar(requisicaoHttp("GET", "/", {}, ""))
+        afirmar.igual(200, respostaHttp["status"])
+        afirmar.igual("text/html; charset=utf-8", cabecalhoResposta(respostaHttp, "content-type"))
+        afirmar.verdadeiro(respostaHttp["corpo"].inclui("<h1>Olá, Mundo!</h1>"))
+        afirmar.igual("nosniff", cabecalhoResposta(respostaHttp, "X-Content-Type-Options"))
     })
 
     teste("corpo JSON e status", funcao() {
         var cabecalhos = { "content-type": "application/json" }
-        var resposta_http = aplicacao.processar(requisicao_http("POST", "/", cabecalhos, "{\"a\": [1, 2]}"))
-        afirmar.igual(201, resposta_http["status"])
-        afirmar.igual("{\"a\":[1,2]}", resposta_http["corpo"])
-        afirmar.igual("application/json; charset=utf-8", cabecalho_resposta(resposta_http, "content-type"))
+        var respostaHttp = aplicacao.processar(requisicaoHttp("POST", "/", cabecalhos, "{\"a\": [1, 2]}"))
+        afirmar.igual(201, respostaHttp["status"])
+        afirmar.igual("{\"a\":[1,2]}", respostaHttp["corpo"])
+        afirmar.igual("application/json; charset=utf-8", cabecalhoResposta(respostaHttp, "content-type"))
     })
 
     teste("JSON inválido é 400", funcao() {
         var cabecalhos = { "content-type": "application/json" }
-        var resposta_http = aplicacao.processar(requisicao_http("POST", "/", cabecalhos, "{x"))
-        afirmar.igual(400, resposta_http["status"])
+        var respostaHttp = aplicacao.processar(requisicaoHttp("POST", "/", cabecalhos, "{x"))
+        afirmar.igual(400, respostaHttp["status"])
     })
 
     teste("parâmetros de rota e interpolação", funcao() {
-        var resposta_http = aplicacao.processar(requisicao_http("GET", "/api/clientes/42", {}, ""))
-        afirmar.igual(200, resposta_http["status"])
-        afirmar.igual("Teste com ID. 42", resposta_http["corpo"])
-        afirmar.igual("text/plain; charset=utf-8", cabecalho_resposta(resposta_http, "content-type"))
+        var respostaHttp = aplicacao.processar(requisicaoHttp("GET", "/api/clientes/42", {}, ""))
+        afirmar.igual(200, respostaHttp["status"])
+        afirmar.igual("Teste com ID. 42", respostaHttp["corpo"])
+        afirmar.igual("text/plain; charset=utf-8", cabecalhoResposta(respostaHttp, "content-type"))
     })
 
     teste("visões detalhes.lmht e com nome", funcao() {
-        var detalhes = aplicacao.processar(requisicao_http("GET", "/clientes/7", {}, ""))
+        var detalhes = aplicacao.processar(requisicaoHttp("GET", "/clientes/7", {}, ""))
         afirmar.verdadeiro(detalhes["corpo"].inclui("<p>Cliente 7</p>"))
-        var outra = aplicacao.processar(requisicao_http("PUT", "/clientes/7", {}, ""))
+        var outra = aplicacao.processar(requisicaoHttp("PUT", "/clientes/7", {}, ""))
         afirmar.verdadeiro(outra["corpo"].inclui("<p>Outra visão</p>"))
     })
 
     teste("middlewares: continuam ou interrompem a cadeia", funcao() {
-        var continuou = aplicacao.processar(requisicao_http("GET", "/protegida", {}, ""))
+        var continuou = aplicacao.processar(requisicaoHttp("GET", "/protegida", {}, ""))
         afirmar.igual(200, continuou["status"])
         afirmar.igual("Rota protegida", continuou["corpo"])
-        afirmar.igual("sim", cabecalho_resposta(continuou, "X-Middleware"))
-        var interrompe = aplicacao.processar(requisicao_http("GET", "/protegida?token=invalido", {}, ""))
+        afirmar.igual("sim", cabecalhoResposta(continuou, "X-Middleware"))
+        var interrompe = aplicacao.processar(requisicaoHttp("GET", "/protegida?token=invalido", {}, ""))
         afirmar.igual(401, interrompe["status"])
         afirmar.igual("Não autorizado", interrompe["corpo"])
     })
 
     teste("redirecionamento, XML, cookies, 204 e HEAD", funcao() {
-        var redirecionado = aplicacao.processar(requisicao_http("GET", "/diversos", {}, ""))
+        var redirecionado = aplicacao.processar(requisicaoHttp("GET", "/diversos", {}, ""))
         afirmar.igual(302, redirecionado["status"])
-        afirmar.igual("/destino", cabecalho_resposta(redirecionado, "location"))
-        var xml = aplicacao.processar(requisicao_http("POST", "/diversos", {}, ""))
-        afirmar.igual("application/xml; charset=utf-8", cabecalho_resposta(xml, "content-type"))
-        afirmar.igual("sessao=abc; Path=/; HttpOnly", cabecalho_resposta(xml, "set-cookie"))
-        var vazio = aplicacao.processar(requisicao_http("PUT", "/diversos", {}, ""))
+        afirmar.igual("/destino", cabecalhoResposta(redirecionado, "location"))
+        var xml = aplicacao.processar(requisicaoHttp("POST", "/diversos", {}, ""))
+        afirmar.igual("application/xml; charset=utf-8", cabecalhoResposta(xml, "content-type"))
+        afirmar.igual("sessao=abc; Path=/; HttpOnly", cabecalhoResposta(xml, "set-cookie"))
+        var vazio = aplicacao.processar(requisicaoHttp("PUT", "/diversos", {}, ""))
         afirmar.igual(204, vazio["status"])
-        var cabeca = aplicacao.processar(requisicao_http("HEAD", "/api/clientes/1", {}, ""))
+        var cabeca = aplicacao.processar(requisicaoHttp("HEAD", "/api/clientes/1", {}, ""))
         afirmar.igual(200, cabeca["status"])
-        afirmar.falso(cabeca["incluir_corpo"])
+        afirmar.falso(cabeca["incluirCorpo"])
     })
 
     teste("erro na rota é 500 com página de erro (mvc)", funcao() {
-        var resposta_http = aplicacao.processar(requisicao_http("PATCH", "/diversos", {}, ""))
-        afirmar.igual(500, resposta_http["status"])
-        afirmar.verdadeiro(resposta_http["corpo"].inclui("Ocorreu um erro"))
-        afirmar.verdadeiro(resposta_http["corpo"].inclui("rotas/diversos.delegua"))
+        var respostaHttp = aplicacao.processar(requisicaoHttp("PATCH", "/diversos", {}, ""))
+        afirmar.igual(500, respostaHttp["status"])
+        afirmar.verdadeiro(respostaHttp["corpo"].inclui("Ocorreu um erro"))
+        afirmar.verdadeiro(respostaHttp["corpo"].inclui("rotas/diversos.delegua"))
     })
 
     teste("404 e 405", funcao() {
-        var cabecalhos_json = { "accept": "application/json" }
-        var nao_encontrada = aplicacao.processar(requisicao_http("GET", "/nao/existe", cabecalhos_json, ""))
-        afirmar.igual(404, nao_encontrada["status"])
-        afirmar.verdadeiro(nao_encontrada["corpo"].inclui("Rota não encontrada"))
-        var pagina = aplicacao.processar(requisicao_http("GET", "/nao/existe?<script>", { "accept": "text/html" }, ""))
+        var cabecalhosJson = { "accept": "application/json" }
+        var naoEncontrada = aplicacao.processar(requisicaoHttp("GET", "/nao/existe", cabecalhosJson, ""))
+        afirmar.igual(404, naoEncontrada["status"])
+        afirmar.verdadeiro(naoEncontrada["corpo"].inclui("Rota não encontrada"))
+        var pagina = aplicacao.processar(requisicaoHttp("GET", "/nao/existe?<script>", { "accept": "text/html" }, ""))
         afirmar.verdadeiro(pagina["corpo"].inclui("Página não encontrada"))
-        var nao_permitido = aplicacao.processar(requisicao_http("DELETE", "/api/clientes/1", {}, ""))
-        afirmar.igual(405, nao_permitido["status"])
-        afirmar.verdadeiro(cabecalho_resposta(nao_permitido, "allow").inclui("GET"))
+        var naoPermitido = aplicacao.processar(requisicaoHttp("DELETE", "/api/clientes/1", {}, ""))
+        afirmar.igual(405, naoPermitido["status"])
+        afirmar.verdadeiro(cabecalhoResposta(naoPermitido, "allow").inclui("GET"))
     })
 })
 
 grupo("Aplicação: estáticos, CORS e documentação", funcao() {
     teste("arquivos estáticos de texto e binários", funcao() {
-        var css = aplicacao.processar(requisicao_http("GET", "/css/estilo.css", {}, ""))
+        var css = aplicacao.processar(requisicaoHttp("GET", "/css/estilo.css", {}, ""))
         afirmar.igual(200, css["status"])
-        afirmar.igual("text/css; charset=utf-8", cabecalho_resposta(css, "content-type"))
+        afirmar.igual("text/css; charset=utf-8", cabecalhoResposta(css, "content-type"))
         afirmar.verdadeiro(css["corpo"].inclui("color: red"))
-        var pagina = aplicacao.processar(requisicao_http("GET", "/pagina", {}, ""))
+        var pagina = aplicacao.processar(requisicaoHttp("GET", "/pagina", {}, ""))
         afirmar.verdadeiro(pagina["corpo"].inclui("<h1>Olá</h1>"))
-        var imagem = aplicacao.processar(requisicao_http("GET", "/imagem.png", {}, ""))
-        afirmar.igual("image/png", cabecalho_resposta(imagem, "content-type"))
+        var imagem = aplicacao.processar(requisicaoHttp("GET", "/imagem.png", {}, ""))
+        afirmar.igual("image/png", cabecalhoResposta(imagem, "content-type"))
         afirmar.verdadeiro(imagem["arquivo"] != nulo)
-        var travessia = aplicacao.processar(requisicao_http("GET", "/../configuracao.delprops", {}, ""))
+        var travessia = aplicacao.processar(requisicaoHttp("GET", "/../configuracao.delprops", {}, ""))
         afirmar.diferente(200, travessia["status"])
     })
 
     teste("CORS com origens configuradas e pré-verificação", funcao() {
-        var permitida = aplicacao.processar(requisicao_http("GET", "/api/clientes/1", { "origin": "https://admin.exemplo.com.br" }, ""))
-        afirmar.igual("https://admin.exemplo.com.br", cabecalho_resposta(permitida, "access-control-allow-origin"))
-        var negada = aplicacao.processar(requisicao_http("GET", "/api/clientes/1", { "origin": "https://outro.com" }, ""))
-        afirmar.igual(nulo, cabecalho_resposta(negada, "access-control-allow-origin"))
-        var cabecalhos_pre = { "origin": "https://exemplo.com.br", "access-control-request-method": "POST" }
-        var preverificacao = aplicacao.processar(requisicao_http("OPTIONS", "/", cabecalhos_pre, ""))
+        var permitida = aplicacao.processar(requisicaoHttp("GET", "/api/clientes/1", { "origin": "https://admin.exemplo.com.br" }, ""))
+        afirmar.igual("https://admin.exemplo.com.br", cabecalhoResposta(permitida, "access-control-allow-origin"))
+        var negada = aplicacao.processar(requisicaoHttp("GET", "/api/clientes/1", { "origin": "https://outro.com" }, ""))
+        afirmar.igual(nulo, cabecalhoResposta(negada, "access-control-allow-origin"))
+        var cabecalhosPre = { "origin": "https://exemplo.com.br", "access-control-request-method": "POST" }
+        var preverificacao = aplicacao.processar(requisicaoHttp("OPTIONS", "/", cabecalhosPre, ""))
         afirmar.igual(204, preverificacao["status"])
-        afirmar.verdadeiro(cabecalho_resposta(preverificacao, "access-control-allow-methods").inclui("POST"))
+        afirmar.verdadeiro(cabecalhoResposta(preverificacao, "access-control-allow-methods").inclui("POST"))
     })
 
     teste("documentação OpenAPI", funcao() {
         aplicacao.documentarRota("rotaGet", "/api/clientes/:id", "{\"documentacao\": {\"sumario\": \"Obtém cliente\", \"etiquetas\": [\"clientes\"]}, \"respostas\": [{\"codigo\": 200, \"descricao\": \"Encontrado\", \"formatos\": [\"text/plain\"]}]}")
-        var resposta_http = aplicacao.processar(requisicao_http("GET", "/docs/openapi.json", {}, ""))
-        afirmar.igual(200, resposta_http["status"])
-        var documento = json_liquido.analisar(resposta_http["corpo"])["resultado"]
+        var respostaHttp = aplicacao.processar(requisicaoHttp("GET", "/docs/openapi.json", {}, ""))
+        afirmar.igual(200, respostaHttp["status"])
+        var documento = jsonLiquido.analisar(respostaHttp["corpo"])["resultado"]
         afirmar.igual("3.0.0", documento["openapi"])
         afirmar.igual("Aplicação de teste", documento["info"]["title"])
         var operacao = documento["paths"]["/api/clientes/{id}"]["get"]
         afirmar.igual("Obtém cliente", operacao["summary"])
         afirmar.igual("Encontrado", operacao["responses"]["200"]["description"])
         afirmar.igual("id", operacao["parameters"][0]["name"])
-        var pagina = aplicacao.processar(requisicao_http("GET", "/docs", {}, ""))
+        var pagina = aplicacao.processar(requisicaoHttp("GET", "/docs", {}, ""))
         afirmar.verdadeiro(pagina["corpo"].inclui("Redoc.init"))
     })
 })
@@ -219,17 +219,17 @@ grupo("Aplicação: autenticação JWT", funcao() {
 
     teste("/token emite token e rotas reconhecem o usuário", funcao() {
         var cabecalhos = { "content-type": "application/json" }
-        var recusado = aplicacao.processar(requisicao_http("POST", "/token", cabecalhos, "{\"email\": \"ana@exemplo.com\", \"senha\": \"errada\"}"))
+        var recusado = aplicacao.processar(requisicaoHttp("POST", "/token", cabecalhos, "{\"email\": \"ana@exemplo.com\", \"senha\": \"errada\"}"))
         afirmar.igual(401, recusado["status"])
-        var emitido = aplicacao.processar(requisicao_http("POST", "/token", cabecalhos, "{\"email\": \"ana@exemplo.com\", \"senha\": \"senha-ana\"}"))
+        var emitido = aplicacao.processar(requisicaoHttp("POST", "/token", cabecalhos, "{\"email\": \"ana@exemplo.com\", \"senha\": \"senha-ana\"}"))
         afirmar.igual(200, emitido["status"])
-        var token = json_liquido.analisar(emitido["corpo"])["resultado"]["token"]
+        var token = jsonLiquido.analisar(emitido["corpo"])["resultado"]["token"]
 
-        var sem_token = aplicacao.processar(requisicao_http("DELETE", "/protegida", {}, ""))
-        afirmar.igual(401, sem_token["status"])
-        var com_token = aplicacao.processar(requisicao_http("DELETE", "/protegida", { "authorization": "Bearer " + token }, ""))
-        afirmar.igual(200, com_token["status"])
-        afirmar.igual("{\"usuario\":1}", com_token["corpo"])
+        var semToken = aplicacao.processar(requisicaoHttp("DELETE", "/protegida", {}, ""))
+        afirmar.igual(401, semToken["status"])
+        var comToken = aplicacao.processar(requisicaoHttp("DELETE", "/protegida", { "authorization": "Bearer " + token }, ""))
+        afirmar.igual(200, comToken["status"])
+        afirmar.igual("{\"usuario\":1}", comToken["corpo"])
     })
 })
 
@@ -240,10 +240,10 @@ grupo("Aplicação: servidor HTTP", funcao() {
         var cliente = rede.conectar("127.0.0.1", porta, 2000)
         rede.escrever(cliente, "POST / HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n{\"nome\":\"çã\"}")
         afirmar.verdadeiro(aplicacao.atenderUma(servidor, 2000))
-        var resposta_texto = rede.lerAte(cliente, "", 1000000, 2000)
-        afirmar.verdadeiro(resposta_texto.inclui("HTTP/1.1 201 Created\r\n"))
-        afirmar.verdadeiro(resposta_texto.inclui("Content-Length: 15\r\n"))
-        afirmar.verdadeiro(resposta_texto.terminaCom("{\"nome\":\"çã\"}"))
+        var respostaTexto = rede.lerAte(cliente, "", 1000000, 2000)
+        afirmar.verdadeiro(respostaTexto.inclui("HTTP/1.1 201 Created\r\n"))
+        afirmar.verdadeiro(respostaTexto.inclui("Content-Length: 15\r\n"))
+        afirmar.verdadeiro(respostaTexto.terminaCom("{\"nome\":\"çã\"}"))
         rede.fechar(cliente)
         rede.fechar(servidor)
     })
@@ -254,8 +254,8 @@ grupo("Aplicação: servidor HTTP", funcao() {
         var cliente = rede.conectar("127.0.0.1", porta, 2000)
         rede.escrever(cliente, "LIXO\r\n\r\n")
         aplicacao.atenderUma(servidor, 2000)
-        var resposta_texto = rede.lerAte(cliente, "", 1000000, 2000)
-        afirmar.verdadeiro(resposta_texto.inclui("HTTP/1.1 400 Bad Request"))
+        var respostaTexto = rede.lerAte(cliente, "", 1000000, 2000)
+        afirmar.verdadeiro(respostaTexto.inclui("HTTP/1.1 400 Bad Request"))
         rede.fechar(cliente)
         rede.fechar(servidor)
     })

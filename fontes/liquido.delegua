@@ -5,37 +5,37 @@
 importar tudo como arquivos de "arquivos"
 importar tudo como processo de "processo"
 importar tudo como nucleo de "./nucleo/aplicacao.delegua"
-importar tudo como documentacao_open_api de "./documentacao/open_api.delegua"
+importar tudo como documentacaoOpenApi de "./documentacao/open_api.delegua"
 importar tudo como gerador de "./gerador/gerador_aplicacao.delegua"
 importar tudo como estilos de "./estilos/estilos.delegua"
-importar tudo como jwt_liquido de "./autenticacao/jwt.delegua"
-importar tudo como json_liquido de "./utilidades/json.delegua"
+importar tudo como jwtLiquido de "./autenticacao/jwt.delegua"
+importar tudo como jsonLiquido de "./utilidades/json.delegua"
 
 // Cria a aplicação para o diretório do projeto, lendo `configuracao.delprops`.
-funcao criar_aplicacao(diretorio_base) {
-    retorna nucleo.criar_aplicacao(diretorio_base)
+funcao criarAplicacao(diretorioBase) {
+    retorna nucleo.criarAplicacao(diretorioBase)
 }
 
 // Atende as requisições descritas em um arquivo JSON, sem abrir porta, e escreve cada
 // resposta como uma linha JSON { "status", "cabecalhos", "corpo" }.
 // Formato do arquivo: [{ "metodo": "GET", "alvo": "/", "cabecalhos": {..}, "corpo": "" }, ..].
-funcao simular_requisicoes(aplicacao, caminho_arquivo) {
-    var conteudo = arquivos.lerTexto(caminho_arquivo)
+funcao simularRequisicoes(aplicacao, caminhoArquivo) {
+    var conteudo = arquivos.lerTexto(caminhoArquivo)
     se (conteudo == nulo) {
-        escreva("[Liquido] Não foi possível ler " + caminho_arquivo + ".")
+        escreva("[Liquido] Não foi possível ler " + caminhoArquivo + ".")
         retorna falso
     }
-    var analisado = json_liquido.analisar(conteudo)
-    se (analisado["erro"] != "" ou nao json_liquido.eh_vetor(analisado["resultado"])) {
+    var analisado = jsonLiquido.analisar(conteudo)
+    se (analisado["erro"] != "" ou nao jsonLiquido.ehVetor(analisado["resultado"])) {
         escreva("[Liquido] Arquivo de simulação inválido: esperado um vetor de requisições.")
         retorna falso
     }
     para cada entrada em analisado["resultado"] {
         var cabecalhos = {}
         se (entrada.contem("cabecalhos")) {
-            var cabecalhos_entrada = entrada["cabecalhos"]
-            para cada nome em cabecalhos_entrada.chaves() {
-                cabecalhos[nome.minusculo()] = "" + cabecalhos_entrada[nome]
+            var cabecalhosEntrada = entrada["cabecalhos"]
+            para cada nome em cabecalhosEntrada.chaves() {
+                cabecalhos[nome.minusculo()] = "" + cabecalhosEntrada[nome]
             }
         }
         var metodo = "GET"
@@ -44,14 +44,14 @@ funcao simular_requisicoes(aplicacao, caminho_arquivo) {
         se (entrada.contem("alvo")) { alvo = entrada["alvo"] }
         var corpo = ""
         se (entrada.contem("corpo")) {
-            var corpo_entrada = entrada["corpo"]
-            var tipo_corpo = tipo de corpo_entrada
-            se (tipo_corpo == "texto") { corpo = corpo_entrada } senao { corpo = json_liquido.serializar(corpo_entrada) }
+            var corpoEntrada = entrada["corpo"]
+            var tipoCorpo = tipo de corpoEntrada
+            se (tipoCorpo == "texto") { corpo = corpoEntrada } senao { corpo = jsonLiquido.serializar(corpoEntrada) }
         }
         var dados = { "metodo": metodo, "alvo": alvo, "versao": "HTTP/1.1", "cabecalhos": cabecalhos, "corpo": corpo }
-        var resposta_http = aplicacao.processar(dados)
-        var saida = { "status": resposta_http["status"], "cabecalhos": resposta_http["cabecalhos"], "corpo": resposta_http["corpo"] }
-        escreva(json_liquido.serializar(saida))
+        var respostaHttp = aplicacao.processar(dados)
+        var saida = { "status": respostaHttp["status"], "cabecalhos": respostaHttp["cabecalhos"], "corpo": respostaHttp["corpo"] }
+        escreva(jsonLiquido.serializar(saida))
     }
     retorna verdadeiro
 }
@@ -59,25 +59,25 @@ funcao simular_requisicoes(aplicacao, caminho_arquivo) {
 // Prepara a aplicação (estilos FolEs) e inicia o servidor HTTP.
 // Com a variável de ambiente LIQUIDO_SIMULAR (caminho de um arquivo JSON), apenas simula
 // requisições; com LIQUIDO_DOCUMENTAR (caminho de saída), apenas grava o documento OpenAPI.
-funcao iniciar_aplicacao(aplicacao) {
-    var arquivo_documentacao = processo.variavelAmbiente("LIQUIDO_DOCUMENTAR")
-    se (arquivo_documentacao != nulo e arquivo_documentacao != "") {
-        var documento = documentacao_open_api.documentar(aplicacao)
-        se (arquivos.escreverTexto(arquivo_documentacao, json_liquido.serializar(documento))) {
-            escreva("Documentação OpenAPI gravada em " + arquivo_documentacao)
+funcao iniciarAplicacao(aplicacao) {
+    var arquivoDocumentacao = processo.variavelAmbiente("LIQUIDO_DOCUMENTAR")
+    se (arquivoDocumentacao != nulo e arquivoDocumentacao != "") {
+        var documento = documentacaoOpenApi.documentar(aplicacao)
+        se (arquivos.escreverTexto(arquivoDocumentacao, jsonLiquido.serializar(documento))) {
+            escreva("Documentação OpenAPI gravada em " + arquivoDocumentacao)
             retorna verdadeiro
         }
-        escreva("[Liquido] Não foi possível gravar " + arquivo_documentacao + ".")
+        escreva("[Liquido] Não foi possível gravar " + arquivoDocumentacao + ".")
         retorna falso
     }
-    var arquivo_simulacao = processo.variavelAmbiente("LIQUIDO_SIMULAR")
-    se (arquivo_simulacao != nulo e arquivo_simulacao != "") {
-        retorna simular_requisicoes(aplicacao, arquivo_simulacao)
+    var arquivoSimulacao = processo.variavelAmbiente("LIQUIDO_SIMULAR")
+    se (arquivoSimulacao != nulo e arquivoSimulacao != "") {
+        retorna simularRequisicoes(aplicacao, arquivoSimulacao)
     }
 
     var liquido = aplicacao.configuracao["liquido"]
     se (liquido["arquetipo"] != "rest") {
-        var resultado = estilos.escrever_estilos(aplicacao.diretorioBase, liquido["estilos"]["diretorioBase"])
+        var resultado = estilos.escreverEstilos(aplicacao.diretorioBase, liquido["estilos"]["diretorioBase"])
         para cada erro em resultado["erros"] { escreva("[Liquido] " + erro) }
         para cada escrito em resultado["escritos"] { escreva("Salvo: " + escrito) }
     }
@@ -88,33 +88,33 @@ funcao iniciar_aplicacao(aplicacao) {
 }
 
 // Gera `.liquido/aplicacao.delegua` para o projeto. Devolve o caminho gerado, ou "" em caso de erro.
-funcao gerar_aplicacao(diretorio_base, linguagem, importacao_liquido) {
-    var resultado = gerador.gerar_arquivo(diretorio_base, linguagem, importacao_liquido)
+funcao gerarAplicacao(diretorioBase, linguagem, importacaoLiquido) {
+    var resultado = gerador.gerarArquivo(diretorioBase, linguagem, importacaoLiquido)
     para cada aviso em resultado["avisos"] { escreva("[Liquido] " + aviso) }
     para cada erro em resultado["erros"] { escreva("[Liquido] " + erro) }
     retorna resultado["caminho"]
 }
 
 // Converte `estilos/*.foles` em CSS. Devolve a quantidade de arquivos escritos.
-funcao escrever_estilos(diretorio_base, diretorio_destino) {
-    var resultado = estilos.escrever_estilos(diretorio_base, diretorio_destino)
+funcao escreverEstilos(diretorioBase, diretorioDestino) {
+    var resultado = estilos.escreverEstilos(diretorioBase, diretorioDestino)
     para cada erro em resultado["erros"] { escreva("[Liquido] " + erro) }
     retorna resultado["escritos"].tamanho()
 }
 
 // Utilidades expostas às rotas.
-funcao codificar_jwt(conteudo, chave_secreta) {
-    retorna jwt_liquido.codificar(conteudo, chave_secreta)
+funcao codificarJwt(conteudo, chaveSecreta) {
+    retorna jwtLiquido.codificar(conteudo, chaveSecreta)
 }
 
-funcao decodificar_jwt(token, chave_secreta) {
-    retorna jwt_liquido.decodificar(token, chave_secreta)
+funcao decodificarJwt(token, chaveSecreta) {
+    retorna jwtLiquido.decodificar(token, chaveSecreta)
 }
 
-funcao para_json(valor) {
-    retorna json_liquido.serializar(valor)
+funcao paraJson(valor) {
+    retorna jsonLiquido.serializar(valor)
 }
 
-funcao de_json(texto_json) {
-    retorna json_liquido.analisar(texto_json)
+funcao deJson(textoJson) {
+    retorna jsonLiquido.analisar(textoJson)
 }

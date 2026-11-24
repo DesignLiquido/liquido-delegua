@@ -2,26 +2,26 @@
 // Tokens gerados aqui são compatíveis com outras bibliotecas JWT.
 importar tudo como criptografia de "criptografia"
 importar tudo como tempo de "tempo"
-importar tudo como json_liquido de "../utilidades/json.delegua"
+importar tudo como jsonLiquido de "../utilidades/json.delegua"
 importar tudo como textos de "../utilidades/texto.delegua"
 
-var alfabeto_base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-var digitos_hexadecimais = "0123456789abcdef"
+var alfabetoBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+var digitosHexadecimais = "0123456789abcdef"
 
 // Converte um texto hexadecimal (como o devolvido por `criptografia.hmacSha256`) em bytes.
-funcao hexadecimal_para_bytes(hexadecimal) {
-    var texto_hex = ("" + hexadecimal).minusculo()
+funcao hexadecimalParaBytes(hexadecimal) {
+    var textoHex = ("" + hexadecimal).minusculo()
     var bytes = []
-    para (var i = 0; i + 1 < texto_hex.tamanho(); i = i + 2) {
-        var alto = digitos_hexadecimais.encontrar(texto_hex[i])
-        var baixo = digitos_hexadecimais.encontrar(texto_hex[i + 1])
+    para (var i = 0; i + 1 < textoHex.tamanho(); i = i + 2) {
+        var alto = digitosHexadecimais.encontrar(textoHex[i])
+        var baixo = digitosHexadecimais.encontrar(textoHex[i + 1])
         bytes.adicionar(alto * 16 + baixo)
     }
     retorna bytes
 }
 
 // Codifica bytes (números de 0 a 255) em Base64.
-funcao bytes_para_base64(bytes) {
+funcao bytesParaBase64(bytes) {
     var saida = ""
     var i = 0
     enquanto (i < bytes.tamanho()) {
@@ -36,43 +36,43 @@ funcao bytes_para_base64(bytes) {
         var c1 = inteiro(bloco / 4096) % 64
         var c2 = inteiro(bloco / 64) % 64
         var c3 = bloco % 64
-        saida = saida + alfabeto_base64[c0] + alfabeto_base64[c1]
-        se (restantes > 1) { saida = saida + alfabeto_base64[c2] } senao { saida = saida + "=" }
-        se (restantes > 2) { saida = saida + alfabeto_base64[c3] } senao { saida = saida + "=" }
+        saida = saida + alfabetoBase64[c0] + alfabetoBase64[c1]
+        se (restantes > 1) { saida = saida + alfabetoBase64[c2] } senao { saida = saida + "=" }
+        se (restantes > 2) { saida = saida + alfabetoBase64[c3] } senao { saida = saida + "=" }
         i = i + 3
     }
     retorna saida
 }
 
 // Base64 → Base64URL: troca `+` por `-`, `/` por `_` e remove o preenchimento `=`.
-funcao base64_para_base64url(base64) {
-    var saida = textos.substituir_todos(base64, "+", "-")
-    saida = textos.substituir_todos(saida, "/", "_")
-    retorna textos.substituir_todos(saida, "=", "")
+funcao base64ParaBase64url(base64) {
+    var saida = textos.substituirTodos(base64, "+", "-")
+    saida = textos.substituirTodos(saida, "/", "_")
+    retorna textos.substituirTodos(saida, "=", "")
 }
 
-funcao base64url_para_base64(base64url) {
-    var saida = textos.substituir_todos("" + base64url, "-", "+")
-    saida = textos.substituir_todos(saida, "_", "/")
+funcao base64urlParaBase64(base64url) {
+    var saida = textos.substituirTodos("" + base64url, "-", "+")
+    saida = textos.substituirTodos(saida, "_", "/")
     enquanto (saida.tamanho() % 4 != 0) { saida = saida + "=" }
     retorna saida
 }
 
-funcao codificar_base64url_texto(conteudo) {
-    retorna base64_para_base64url(criptografia.codificarBase64("" + conteudo))
+funcao codificarBase64urlTexto(conteudo) {
+    retorna base64ParaBase64url(criptografia.codificarBase64("" + conteudo))
 }
 
-funcao decodificar_base64url_texto(conteudo) {
-    retorna criptografia.decodificarBase64(base64url_para_base64(conteudo))
+funcao decodificarBase64urlTexto(conteudo) {
+    retorna criptografia.decodificarBase64(base64urlParaBase64(conteudo))
 }
 
-funcao assinar(dados, chave_secreta) {
-    var hexadecimal = criptografia.hmacSha256(dados, chave_secreta)
-    retorna base64_para_base64url(bytes_para_base64(hexadecimal_para_bytes(hexadecimal)))
+funcao assinar(dados, chaveSecreta) {
+    var hexadecimal = criptografia.hmacSha256(dados, chaveSecreta)
+    retorna base64ParaBase64url(bytesParaBase64(hexadecimalParaBytes(hexadecimal)))
 }
 
 // Compara dois textos sem parar na primeira diferença.
-funcao textos_iguais(a, b) {
+funcao textosIguais(a, b) {
     se (a.tamanho() != b.tamanho()) { retorna falso }
     var diferencas = 0
     para (var i = 0; i < a.tamanho(); i = i + 1) {
@@ -81,48 +81,48 @@ funcao textos_iguais(a, b) {
     retorna diferencas == 0
 }
 
-funcao agora_em_segundos() {
+funcao agoraEmSegundos() {
     retorna tempo.carimboDeTempoUnix()
 }
 
 // Gera um token assinado com HS256 para o dicionário `conteudo`.
-funcao codificar(conteudo, chave_secreta) {
+funcao codificar(conteudo, chaveSecreta) {
     var cabecalho = { "alg": "HS256", "typ": "JWT" }
-    var inicio = codificar_base64url_texto(json_liquido.serializar(cabecalho)) + "." + codificar_base64url_texto(json_liquido.serializar(conteudo))
-    retorna inicio + "." + assinar(inicio, chave_secreta)
+    var inicio = codificarBase64urlTexto(jsonLiquido.serializar(cabecalho)) + "." + codificarBase64urlTexto(jsonLiquido.serializar(conteudo))
+    retorna inicio + "." + assinar(inicio, chaveSecreta)
 }
 
 // Verifica um token. Devolve { "valido": lógico, "conteudo": dicionário ou nulo, "erro": texto }.
 // Tokens com `exp` no passado ou `nbf` no futuro são recusados.
-funcao decodificar(token, chave_secreta) {
-    var sem_conteudo = nulo
-    se (token == nulo) { retorna { "valido": falso, "conteudo": sem_conteudo, "erro": "Token ausente." } }
+funcao decodificar(token, chaveSecreta) {
+    var semConteudo = nulo
+    se (token == nulo) { retorna { "valido": falso, "conteudo": semConteudo, "erro": "Token ausente." } }
     var partes = ("" + token).aparar().dividir(".")
-    se (partes.tamanho() != 3) { retorna { "valido": falso, "conteudo": sem_conteudo, "erro": "Token mal formado." } }
+    se (partes.tamanho() != 3) { retorna { "valido": falso, "conteudo": semConteudo, "erro": "Token mal formado." } }
 
-    var cabecalho_analisado = json_liquido.analisar(decodificar_base64url_texto(partes[0]))
-    se (cabecalho_analisado["erro"] != "") { retorna { "valido": falso, "conteudo": sem_conteudo, "erro": "Cabeçalho do token inválido." } }
-    var cabecalho = cabecalho_analisado["resultado"]
-    se (nao json_liquido.eh_dicionario(cabecalho) ou nao cabecalho.contem("alg") ou cabecalho["alg"] != "HS256") {
-        retorna { "valido": falso, "conteudo": sem_conteudo, "erro": "Algoritmo do token não suportado." }
+    var cabecalhoAnalisado = jsonLiquido.analisar(decodificarBase64urlTexto(partes[0]))
+    se (cabecalhoAnalisado["erro"] != "") { retorna { "valido": falso, "conteudo": semConteudo, "erro": "Cabeçalho do token inválido." } }
+    var cabecalho = cabecalhoAnalisado["resultado"]
+    se (nao jsonLiquido.ehDicionario(cabecalho) ou nao cabecalho.contem("alg") ou cabecalho["alg"] != "HS256") {
+        retorna { "valido": falso, "conteudo": semConteudo, "erro": "Algoritmo do token não suportado." }
     }
 
-    var esperada = assinar(partes[0] + "." + partes[1], chave_secreta)
-    se (nao textos_iguais(esperada, partes[2])) {
-        retorna { "valido": falso, "conteudo": sem_conteudo, "erro": "Assinatura do token inválida." }
+    var esperada = assinar(partes[0] + "." + partes[1], chaveSecreta)
+    se (nao textosIguais(esperada, partes[2])) {
+        retorna { "valido": falso, "conteudo": semConteudo, "erro": "Assinatura do token inválida." }
     }
 
-    var conteudo_analisado = json_liquido.analisar(decodificar_base64url_texto(partes[1]))
-    se (conteudo_analisado["erro"] != "") { retorna { "valido": falso, "conteudo": sem_conteudo, "erro": "Conteúdo do token inválido." } }
-    var conteudo = conteudo_analisado["resultado"]
-    se (nao json_liquido.eh_dicionario(conteudo)) { retorna { "valido": falso, "conteudo": sem_conteudo, "erro": "Conteúdo do token inválido." } }
+    var conteudoAnalisado = jsonLiquido.analisar(decodificarBase64urlTexto(partes[1]))
+    se (conteudoAnalisado["erro"] != "") { retorna { "valido": falso, "conteudo": semConteudo, "erro": "Conteúdo do token inválido." } }
+    var conteudo = conteudoAnalisado["resultado"]
+    se (nao jsonLiquido.ehDicionario(conteudo)) { retorna { "valido": falso, "conteudo": semConteudo, "erro": "Conteúdo do token inválido." } }
 
-    var agora = agora_em_segundos()
+    var agora = agoraEmSegundos()
     se (conteudo.contem("exp") e conteudo["exp"] != nulo e agora >= conteudo["exp"]) {
-        retorna { "valido": falso, "conteudo": sem_conteudo, "erro": "Token expirado." }
+        retorna { "valido": falso, "conteudo": semConteudo, "erro": "Token expirado." }
     }
     se (conteudo.contem("nbf") e conteudo["nbf"] != nulo e agora < conteudo["nbf"]) {
-        retorna { "valido": falso, "conteudo": sem_conteudo, "erro": "Token ainda não é válido." }
+        retorna { "valido": falso, "conteudo": semConteudo, "erro": "Token ainda não é válido." }
     }
     retorna { "valido": verdadeiro, "conteudo": conteudo, "erro": "" }
 }

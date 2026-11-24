@@ -11,56 +11,56 @@
   "simbolos": [
     {
       "tipo": "funcao",
-      "nome": "criar_aplicacao",
+      "nome": "criarAplicacao",
       "tipoRetorno": "Aplicacao",
-      "argumentos": [{ "nome": "diretorio_base", "tipo": "texto" }],
+      "argumentos": [{ "nome": "diretorioBase", "tipo": "texto" }],
       "documentacao": "Cria a aplicação do projeto, lendo configuracao.delprops."
     },
     {
       "tipo": "funcao",
-      "nome": "iniciar_aplicacao",
+      "nome": "iniciarAplicacao",
       "tipoRetorno": "lógico",
       "argumentos": [{ "nome": "aplicacao", "tipo": "Aplicacao" }],
       "documentacao": "Converte os estilos FolEs e inicia o servidor HTTP (ou simula requisições/gera documentação, conforme LIQUIDO_SIMULAR e LIQUIDO_DOCUMENTAR)."
     },
     {
       "tipo": "funcao",
-      "nome": "gerar_aplicacao",
+      "nome": "gerarAplicacao",
       "tipoRetorno": "texto",
       "argumentos": [
-        { "nome": "diretorio_base", "tipo": "texto" },
+        { "nome": "diretorioBase", "tipo": "texto" },
         { "nome": "linguagem", "tipo": "texto" },
-        { "nome": "importacao_liquido", "tipo": "texto" }
+        { "nome": "importacaoLiquido", "tipo": "texto" }
       ],
       "documentacao": "Gera .liquido/aplicacao.delegua a partir de rotas/ e devolve o caminho gerado."
     },
     {
       "tipo": "funcao",
-      "nome": "escrever_estilos",
+      "nome": "escreverEstilos",
       "tipoRetorno": "número",
       "argumentos": [
-        { "nome": "diretorio_base", "tipo": "texto" },
-        { "nome": "diretorio_destino", "tipo": "texto" }
+        { "nome": "diretorioBase", "tipo": "texto" },
+        { "nome": "diretorioDestino", "tipo": "texto" }
       ],
       "documentacao": "Converte estilos/*.foles em CSS no diretório de destino."
     },
     {
       "tipo": "funcao",
-      "nome": "codificar_jwt",
+      "nome": "codificarJwt",
       "tipoRetorno": "texto",
       "argumentos": [
         { "nome": "conteudo", "tipo": "dicionário" },
-        { "nome": "chave_secreta", "tipo": "texto" }
+        { "nome": "chaveSecreta", "tipo": "texto" }
       ],
       "documentacao": "Gera um JSON Web Token assinado com HS256."
     },
     {
       "tipo": "funcao",
-      "nome": "decodificar_jwt",
+      "nome": "decodificarJwt",
       "tipoRetorno": "dicionário",
       "argumentos": [
         { "nome": "token", "tipo": "texto" },
-        { "nome": "chave_secreta", "tipo": "texto" }
+        { "nome": "chaveSecreta", "tipo": "texto" }
       ],
       "documentacao": "Verifica um token HS256. Devolve { valido, conteudo, erro }."
     }

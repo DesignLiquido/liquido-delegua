@@ -1,6 +1,6 @@
 // Tipos de conteúdo por extensão de arquivo, para arquivos estáticos.
 
-var tipos_por_extensao = {
+var tiposPorExtensao = {
     "html": "text/html; charset=utf-8",
     "htm": "text/html; charset=utf-8",
     "css": "text/css; charset=utf-8",
@@ -35,26 +35,26 @@ var tipos_por_extensao = {
 }
 
 // Tipos cujo conteúdo é texto (UTF-8) e pode ser lido com `arquivos.lerTexto`.
-var tipos_texto = ["html", "htm", "css", "js", "mjs", "json", "map", "txt", "md", "csv", "xml", "svg"]
+var tiposTexto = ["html", "htm", "css", "js", "mjs", "json", "map", "txt", "md", "csv", "xml", "svg"]
 
-funcao extensao_arquivo(caminho) {
-    var texto_caminho = "" + caminho
+funcao extensaoArquivo(caminho) {
+    var textoCaminho = "" + caminho
     var posicao = -1
-    para (var i = 0; i < texto_caminho.tamanho(); i = i + 1) {
-        var c = texto_caminho[i]
+    para (var i = 0; i < textoCaminho.tamanho(); i = i + 1) {
+        var c = textoCaminho[i]
         se (c == ".") { posicao = i }
         se (c == "/" ou c == "\\") { posicao = -1 }
     }
     se (posicao < 0) { retorna "" }
-    retorna texto_caminho.subtexto(posicao + 1, texto_caminho.tamanho()).minusculo()
+    retorna textoCaminho.subtexto(posicao + 1, textoCaminho.tamanho()).minusculo()
 }
 
-funcao tipo_por_caminho(caminho) {
-    var ext = extensao_arquivo(caminho)
-    se (tipos_por_extensao.contem(ext)) { retorna tipos_por_extensao[ext] }
+funcao tipoPorCaminho(caminho) {
+    var ext = extensaoArquivo(caminho)
+    se (tiposPorExtensao.contem(ext)) { retorna tiposPorExtensao[ext] }
     retorna "application/octet-stream"
 }
 
-funcao eh_texto(caminho) {
-    retorna tipos_texto.inclui(extensao_arquivo(caminho))
+funcao ehTexto(caminho) {
+    retorna tiposTexto.inclui(extensaoArquivo(caminho))
 }

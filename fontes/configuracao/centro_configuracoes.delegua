@@ -4,7 +4,7 @@ importar tudo como processo de "processo"
 importar tudo como delprops de "./delprops.delegua"
 importar tudo como textos de "../utilidades/texto.delegua"
 
-funcao configuracao_padrao() {
+funcao configuracaoPadrao() {
     var licenca = { "nome": nulo, "url": nulo }
     var aplicacao = { "nome": "", "versao": "", "descricao": "", "licenca": licenca }
     var autenticacao = { "tecnologia": nulo }
@@ -43,18 +43,18 @@ funcao configuracao_padrao() {
     retorna { "liquido": liquido }
 }
 
-funcao eh_dicionario(valor) {
-    var tipo_valor = tipo de valor
-    retorna tipo_valor == "dicionário"
+funcao ehDicionario(valor) {
+    var tipoValor = tipo de valor
+    retorna tipoValor == "dicionário"
 }
 
 // Aplica uma entrada { "caminho": [..], "dado": .. } na configuração. Devolve uma mensagem de erro ou "".
-funcao aplicar_entrada(configuracao, entrada) {
+funcao aplicarEntrada(configuracao, entrada) {
     var caminho = entrada["caminho"]
     var atual = configuracao
     para (var i = 0; i < caminho.tamanho() - 1; i = i + 1) {
         var parte = caminho[i]
-        se (nao atual.contem(parte) ou nao eh_dicionario(atual[parte])) {
+        se (nao atual.contem(parte) ou nao ehDicionario(atual[parte])) {
             retorna "Propriedade " + caminho.fatiar(0, i + 1).juntar(".") + " não existe."
         }
         atual = atual[parte]
@@ -63,67 +63,67 @@ funcao aplicar_entrada(configuracao, entrada) {
     se (nao atual.contem(ultima)) {
         retorna "Propriedade " + caminho.juntar(".") + " não existe."
     }
-    se (eh_dicionario(atual[ultima])) {
+    se (ehDicionario(atual[ultima])) {
         retorna "Propriedade " + caminho.juntar(".") + " é um grupo de configurações e não recebe valor."
     }
     var dado = entrada["dado"]
     se (ultima == "linguagem" e dado != nulo) {
-        dado = textos.remover_acentos(dado).minusculo()
+        dado = textos.removerAcentos(dado).minusculo()
     }
     atual[ultima] = dado
     retorna ""
 }
 
 // Monta a configuração a partir do texto DelProps. Devolve { "configuracao": .., "erros": [..] }.
-funcao configurar_por_texto(texto_delprops) {
-    var configuracao: dicionário = configuracao_padrao()
-    var resultado = delprops.analisar(texto_delprops)
+funcao configurarPorTexto(textoDelprops) {
+    var configuracao: dicionário = configuracaoPadrao()
+    var resultado = delprops.analisar(textoDelprops)
     var erros = resultado["erros"]
     para cada entrada em resultado["entradas"] {
-        var erro = aplicar_entrada(configuracao, entrada)
+        var erro = aplicarEntrada(configuracao, entrada)
         se (erro != "") { erros.adicionar("[Linha " + texto(entrada["linha"]) + "] " + erro) }
     }
     var lincones = configuracao["liquido"]["dados"]["lincones"]
-    var tecnologia_ausente = lincones["tecnologia"] == nulo ou lincones["tecnologia"] == ""
-    var caminho_ausente = lincones["caminho"] == nulo ou lincones["caminho"] == ""
-    se (tecnologia_ausente != caminho_ausente) {
-        var chave_ausente = "liquido.dados.lincones.caminho"
-        se (tecnologia_ausente) { chave_ausente = "liquido.dados.lincones.tecnologia" }
-        erros.adicionar("Configuração incompleta: " + chave_ausente + " não informado. Defina ambas as propriedades \"liquido.dados.lincones.tecnologia\" e \"liquido.dados.lincones.caminho\", ou remova ambas se não for usar banco de dados.")
+    var tecnologiaAusente = lincones["tecnologia"] == nulo ou lincones["tecnologia"] == ""
+    var caminhoAusente = lincones["caminho"] == nulo ou lincones["caminho"] == ""
+    se (tecnologiaAusente != caminhoAusente) {
+        var chaveAusente = "liquido.dados.lincones.caminho"
+        se (tecnologiaAusente) { chaveAusente = "liquido.dados.lincones.tecnologia" }
+        erros.adicionar("Configuração incompleta: " + chaveAusente + " não informado. Defina ambas as propriedades \"liquido.dados.lincones.tecnologia\" e \"liquido.dados.lincones.caminho\", ou remova ambas se não for usar banco de dados.")
     }
     retorna { "configuracao": configuracao, "erros": erros }
 }
 
 // Lê `configuracao.delprops` do diretório base. Sem arquivo, usa os valores padrão.
-funcao carregar(diretorio_base) {
-    var caminho = arquivos.juntarCaminhos(diretorio_base, "configuracao.delprops")
+funcao carregar(diretorioBase) {
+    var caminho = arquivos.juntarCaminhos(diretorioBase, "configuracao.delprops")
     var conteudo = arquivos.lerTexto(caminho)
     se (conteudo == nulo) {
-        var padrao_configuracao = configuracao_padrao()
-        var sem_erros = []
-        retorna { "configuracao": padrao_configuracao, "erros": sem_erros, "encontrado": falso }
+        var padraoConfiguracao = configuracaoPadrao()
+        var semErros = []
+        retorna { "configuracao": padraoConfiguracao, "erros": semErros, "encontrado": falso }
     }
-    var resultado = configurar_por_texto(conteudo)
+    var resultado = configurarPorTexto(conteudo)
     retorna { "configuracao": resultado["configuracao"], "erros": resultado["erros"], "encontrado": verdadeiro }
 }
 
 // Variável de ambiente, ou entrada `NOME=valor` do arquivo `.ambiente` do diretório base.
 // 'verdadeiro'/'falso' viram lógicos. Devolve nulo se não houver.
-funcao variavel_ambiente(diretorio_base, nome) {
-    var valor_ambiente = processo.variavelAmbiente(nome)
-    se (valor_ambiente == nulo ou valor_ambiente == "") {
-        valor_ambiente = nulo
-        var conteudo = arquivos.lerTexto(arquivos.juntarCaminhos(diretorio_base, ".ambiente"))
+funcao variavelAmbiente(diretorioBase, nome) {
+    var valorAmbiente = processo.variavelAmbiente(nome)
+    se (valorAmbiente == nulo ou valorAmbiente == "") {
+        valorAmbiente = nulo
+        var conteudo = arquivos.lerTexto(arquivos.juntarCaminhos(diretorioBase, ".ambiente"))
         se (conteudo != nulo) {
-            para cada linha em textos.substituir_todos(conteudo, "\r\n", "\n").dividir("\n") {
-                se (textos.comeca_com(linha, nome + "=")) {
-                    valor_ambiente = linha.subtexto(nome.tamanho() + 1, linha.tamanho()).aparar()
+            para cada linha em textos.substituirTodos(conteudo, "\r\n", "\n").dividir("\n") {
+                se (textos.comecaCom(linha, nome + "=")) {
+                    valorAmbiente = linha.subtexto(nome.tamanho() + 1, linha.tamanho()).aparar()
                     sustar
                 }
             }
         }
     }
-    se (valor_ambiente == "verdadeiro" ou valor_ambiente == "Verdadeiro") { retorna verdadeiro }
-    se (valor_ambiente == "falso" ou valor_ambiente == "Falso") { retorna falso }
-    retorna valor_ambiente
+    se (valorAmbiente == "verdadeiro" ou valorAmbiente == "Verdadeiro") { retorna verdadeiro }
+    se (valorAmbiente == "falso" ou valorAmbiente == "Falso") { retorna falso }
+    retorna valorAmbiente
 }

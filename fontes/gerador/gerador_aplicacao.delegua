@@ -18,25 +18,25 @@
 //   documentação OpenAPI;
 // - preserva a numeração de linhas dentro de cada rota (linhas removidas viram linhas vazias).
 importar tudo como arquivos de "arquivos"
-importar tudo como json_liquido de "../utilidades/json.delegua"
+importar tudo como jsonLiquido de "../utilidades/json.delegua"
 importar tudo como textos de "../utilidades/texto.delegua"
 
 var adiante = {}
 
-var nome_diretorio_gerado = ".liquido"
-var nome_programa_gerado = "aplicacao.delegua"
+var nomeDiretorioGerado = ".liquido"
+var nomeProgramaGerado = "aplicacao.delegua"
 
-funcao extensao_da_linguagem(linguagem) {
-    se (textos.remover_acentos("" + linguagem).minusculo() == "pitugues") { retorna ".pitu" }
+funcao extensaoDaLinguagem(linguagem) {
+    se (textos.removerAcentos("" + linguagem).minusculo() == "pitugues") { retorna ".pitu" }
     retorna ".delegua"
 }
 
 // Lista os arquivos de rota (caminhos relativos ao diretório base, com "/"), em ordem.
 // Devolve { "arquivos": [..], "avisos": [..] }.
-funcao descobrir_arquivos_rotas(diretorio_base, linguagem) {
-    var extensao_rota = extensao_da_linguagem(linguagem)
-    var outra_extensao = ".pitu"
-    se (extensao_rota == ".pitu") { outra_extensao = ".delegua" }
+funcao descobrirArquivosRotas(diretorioBase, linguagem) {
+    var extensaoRota = extensaoDaLinguagem(linguagem)
+    var outraExtensao = ".pitu"
+    se (extensaoRota == ".pitu") { outraExtensao = ".delegua" }
     var encontrados = []
     var avisos = []
     var pendentes = ["rotas"]
@@ -45,18 +45,18 @@ funcao descobrir_arquivos_rotas(diretorio_base, linguagem) {
         limite = limite - 1
         var relativo = pendentes[0]
         pendentes = pendentes.fatiar(1)
-        var absoluto = arquivos.juntarCaminhos(diretorio_base, relativo)
+        var absoluto = arquivos.juntarCaminhos(diretorioBase, relativo)
         var subdiretorios = []
-        para cada nome_listado em arquivos.listarDiretorio(absoluto) {
-            var nome = "" + nome_listado
-            var relativo_item = relativo + "/" + nome
-            var absoluto_item = arquivos.juntarCaminhos(absoluto, nome)
-            se (arquivos.eDiretorio(absoluto_item)) {
-                subdiretorios.adicionar(relativo_item)
-            } senao se (textos.termina_com(nome, extensao_rota)) {
-                encontrados.adicionar(relativo_item)
-            } senao se (textos.termina_com(nome, outra_extensao)) {
-                avisos.adicionar("Arquivo de rota '" + relativo_item + "' ignorado: projeto configurado para a extensão " + extensao_rota + ".")
+        para cada nomeListado em arquivos.listarDiretorio(absoluto) {
+            var nome = "" + nomeListado
+            var relativoItem = relativo + "/" + nome
+            var absolutoItem = arquivos.juntarCaminhos(absoluto, nome)
+            se (arquivos.eDiretorio(absolutoItem)) {
+                subdiretorios.adicionar(relativoItem)
+            } senao se (textos.terminaCom(nome, extensaoRota)) {
+                encontrados.adicionar(relativoItem)
+            } senao se (textos.terminaCom(nome, outraExtensao)) {
+                avisos.adicionar("Arquivo de rota '" + relativoItem + "' ignorado: projeto configurado para a extensão " + extensaoRota + ".")
             }
         }
         para cada subdiretorio em subdiretorios { pendentes.adicionar(subdiretorio) }
@@ -65,17 +65,17 @@ funcao descobrir_arquivos_rotas(diretorio_base, linguagem) {
 }
 
 // "rotas/api/clientes/[id].delegua" -> "/api/clientes/:id"; "rotas/inicial.delegua" -> "/".
-funcao caminho_da_rota(arquivo_relativo, linguagem) {
-    var extensao_rota = extensao_da_linguagem(linguagem)
-    var segmentos = arquivo_relativo.dividir("/")
+funcao caminhoDaRota(arquivoRelativo, linguagem) {
+    var extensaoRota = extensaoDaLinguagem(linguagem)
+    var segmentos = arquivoRelativo.dividir("/")
     var resultado = []
     para (var i = 1; i < segmentos.tamanho(); i = i + 1) {
         var segmento = segmentos[i]
         se (i == segmentos.tamanho() - 1) {
-            segmento = segmento.subtexto(0, segmento.tamanho() - extensao_rota.tamanho())
+            segmento = segmento.subtexto(0, segmento.tamanho() - extensaoRota.tamanho())
             se (segmento == "inicial") { continua }
         }
-        se (textos.comeca_com(segmento, "[") e textos.termina_com(segmento, "]") e segmento.tamanho() > 2) {
+        se (textos.comecaCom(segmento, "[") e textos.terminaCom(segmento, "]") e segmento.tamanho() > 2) {
             segmento = ":" + segmento.subtexto(1, segmento.tamanho() - 1)
         }
         resultado.adicionar(segmento)
@@ -87,8 +87,8 @@ funcao caminho_da_rota(arquivo_relativo, linguagem) {
 
 // Interpreta o valor de um atributo de decorador: texto, número, lógico ou vetor.
 // Grava em estado["resultado"]; estado["erro"] não vazio indica falha.
-funcao interpretar_valor_decorador(texto_valor, estado) {
-    var bruto = texto_valor.aparar()
+funcao interpretarValorDecorador(textoValor, estado) {
+    var bruto = textoValor.aparar()
     estado["resultado"] = nulo
     se (bruto == "verdadeiro") {
         estado["resultado"] = verdadeiro
@@ -104,21 +104,21 @@ funcao interpretar_valor_decorador(texto_valor, estado) {
     }
     se (bruto.tamanho() >= 2 e bruto[0] == "[" e bruto[bruto.tamanho() - 1] == "]") {
         var itens = []
-        var partes: vetor = adiante["dividir_nivel_superior"](bruto.subtexto(1, bruto.tamanho() - 1), ",")
+        var partes: vetor = adiante["dividirNivelSuperior"](bruto.subtexto(1, bruto.tamanho() - 1), ",")
         para (var i = 0; i < partes.tamanho(); i = i + 1) {
             se (partes[i].aparar() == "") { continua }
-            interpretar_valor_decorador(partes[i], estado)
+            interpretarValorDecorador(partes[i], estado)
             var item = estado["resultado"]
             itens.adicionar(item)
         }
         estado["resultado"] = itens
         retorna
     }
-    var eh_numero = bruto != ""
+    var ehNumero = bruto != ""
     para cada c em bruto {
-        se (nao "-0123456789.".inclui(c)) { eh_numero = falso }
+        se (nao "-0123456789.".inclui(c)) { ehNumero = falso }
     }
-    se (eh_numero) {
+    se (ehNumero) {
         estado["resultado"] = numero(bruto)
         retorna
     }
@@ -126,7 +126,7 @@ funcao interpretar_valor_decorador(texto_valor, estado) {
 }
 
 // Divide `conteudo` por `separador` fora de textos e colchetes.
-funcao dividir_nivel_superior(conteudo, separador) {
+funcao dividirNivelSuperior(conteudo, separador) {
     var partes = []
     var atual = ""
     var aspas = ""
@@ -154,11 +154,11 @@ funcao dividir_nivel_superior(conteudo, separador) {
     se (atual.aparar() != "") { partes.adicionar(atual) }
     retorna partes
 }
-adiante["dividir_nivel_superior"] = dividir_nivel_superior
+adiante["dividirNivelSuperior"] = dividirNivelSuperior
 
 // "@rest.resposta(codigo = 200, descricao = "Ok")" -> { "nome": "@rest.resposta", "atributos": {..}, "erro": "" }.
-funcao analisar_decorador(texto_decorador) {
-    var bruto = texto_decorador.aparar()
+funcao analisarDecorador(textoDecorador) {
+    var bruto = textoDecorador.aparar()
     var abertura = bruto.encontrar("(")
     var atributos = {}
     se (abertura < 0) { retorna { "nome": bruto, "atributos": atributos, "erro": "" } }
@@ -172,7 +172,7 @@ funcao analisar_decorador(texto_decorador) {
     }
     se (fechamento < 0) { retorna { "nome": nome, "atributos": atributos, "erro": "Decorador " + nome + " sem ')'." } }
     var estado = { "resultado": nulo, "erro": "" }
-    var partes: vetor = dividir_nivel_superior(bruto.subtexto(abertura + 1, fechamento), ",")
+    var partes: vetor = dividirNivelSuperior(bruto.subtexto(abertura + 1, fechamento), ",")
     para cada parte em partes {
         se (parte.aparar() == "") { continua }
         var igual = parte.encontrar("=")
@@ -181,16 +181,16 @@ funcao analisar_decorador(texto_decorador) {
             retorna { "nome": nome, "atributos": atributos, "erro": "Atributo sem valor em " + nome + ": " + parte.aparar() }
         }
         var chave = parte.subtexto(0, igual).aparar()
-        interpretar_valor_decorador(parte.subtexto(igual + 1, parte.tamanho()), estado)
+        interpretarValorDecorador(parte.subtexto(igual + 1, parte.tamanho()), estado)
         se (estado["erro"] != "") { retorna { "nome": nome, "atributos": atributos, "erro": estado["erro"] } }
-        var valor_atributo = estado["resultado"]
-        atributos[chave] = valor_atributo
+        var valorAtributo = estado["resultado"]
+        atributos[chave] = valorAtributo
     }
     retorna { "nome": nome, "atributos": atributos, "erro": "" }
 }
 
 // Diferença entre parênteses abertos e fechados em uma linha, fora de textos.
-funcao saldo_parenteses(linha) {
+funcao saldoParenteses(linha) {
     var saldo = 0
     var aspas = ""
     para cada c em linha {
@@ -206,9 +206,9 @@ funcao saldo_parenteses(linha) {
 }
 
 // Nome do método em uma linha `liquido.rotaX(`, ou "".
-funcao metodo_registro_na_linha(linha) {
+funcao metodoRegistroNaLinha(linha) {
     var aparada = linha.aparar()
-    se (nao textos.comeca_com(aparada, "liquido.rota")) { retorna "" }
+    se (nao textos.comecaCom(aparada, "liquido.rota")) { retorna "" }
     var abertura = aparada.encontrar("(")
     se (abertura < 0) { retorna "" }
     retorna aparada.subtexto(8, abertura).aparar()
@@ -216,8 +216,8 @@ funcao metodo_registro_na_linha(linha) {
 
 // Transforma o texto de um arquivo de rota. Devolve
 // { "corpo": texto, "importacoes": [linhas], "documentacoes": [{ "metodo", "json" }], "erros": [..] }.
-funcao transformar_rota(conteudo, arquivo_relativo) {
-    var linhas = textos.substituir_todos("" + conteudo, "\r\n", "\n").dividir("\n")
+funcao transformarRota(conteudo, arquivoRelativo) {
+    var linhas = textos.substituirTodos("" + conteudo, "\r\n", "\n").dividir("\n")
     var saida = []
     var importacoes = []
     var documentacoes = []
@@ -227,49 +227,49 @@ funcao transformar_rota(conteudo, arquivo_relativo) {
     enquanto (i < linhas.tamanho()) {
         var linha = linhas[i]
         var aparada = linha.aparar()
-        se (textos.comeca_com(aparada, "importar ") ou textos.comeca_com(aparada, "importe ")) {
+        se (textos.comecaCom(aparada, "importar ") ou textos.comecaCom(aparada, "importe ")) {
             importacoes.adicionar(aparada)
             saida.adicionar("")
             i = i + 1
             continua
         }
-        se (textos.comeca_com(aparada, "@")) {
-            var texto_decorador = aparada
-            var saldo = saldo_parenteses(aparada)
+        se (textos.comecaCom(aparada, "@")) {
+            var textoDecorador = aparada
+            var saldo = saldoParenteses(aparada)
             saida.adicionar("")
             i = i + 1
             enquanto (saldo > 0 e i < linhas.tamanho()) {
-                texto_decorador = texto_decorador + " " + linhas[i].aparar()
-                saldo = saldo + saldo_parenteses(linhas[i])
+                textoDecorador = textoDecorador + " " + linhas[i].aparar()
+                saldo = saldo + saldoParenteses(linhas[i])
                 saida.adicionar("")
                 i = i + 1
             }
-            var decorador: dicionário = analisar_decorador(texto_decorador)
+            var decorador: dicionário = analisarDecorador(textoDecorador)
             se (decorador["erro"] != "") {
-                erros.adicionar(arquivo_relativo + ": " + decorador["erro"])
+                erros.adicionar(arquivoRelativo + ": " + decorador["erro"])
             } senao {
                 pendentes.adicionar(decorador)
             }
             continua
         }
-        var metodo = metodo_registro_na_linha(linha)
+        var metodo = metodoRegistroNaLinha(linha)
         se (metodo != "" e pendentes.tamanho() > 0) {
             var documentacao = {}
             var respostas = []
             para cada pendente em pendentes {
-                var nome_decorador = pendente["nome"]
-                se (nome_decorador == "@rest.documentacao" ou nome_decorador == "@rest.documentação") {
+                var nomeDecorador = pendente["nome"]
+                se (nomeDecorador == "@rest.documentacao" ou nomeDecorador == "@rest.documentação") {
                     documentacao = pendente["atributos"]
-                } senao se (nome_decorador == "@rest.resposta") {
-                    var atributos_resposta = pendente["atributos"]
-                    respostas.adicionar(atributos_resposta)
+                } senao se (nomeDecorador == "@rest.resposta") {
+                    var atributosResposta = pendente["atributos"]
+                    respostas.adicionar(atributosResposta)
                 } senao {
-                    erros.adicionar(arquivo_relativo + ": Decorador " + nome_decorador + " não é válido para um método de um controlador.")
+                    erros.adicionar(arquivoRelativo + ": Decorador " + nomeDecorador + " não é válido para um método de um controlador.")
                 }
             }
-            var dados_documentacao = { "documentacao": documentacao, "respostas": respostas }
-            var entrada_documentacao = { "metodo": metodo, "json": json_liquido.serializar(dados_documentacao) }
-            documentacoes.adicionar(entrada_documentacao)
+            var dadosDocumentacao = { "documentacao": documentacao, "respostas": respostas }
+            var entradaDocumentacao = { "metodo": metodo, "json": jsonLiquido.serializar(dadosDocumentacao) }
+            documentacoes.adicionar(entradaDocumentacao)
             pendentes = []
         }
         saida.adicionar(linha)
@@ -278,23 +278,23 @@ funcao transformar_rota(conteudo, arquivo_relativo) {
     retorna { "corpo": saida.juntar("\n"), "importacoes": importacoes, "documentacoes": documentacoes, "erros": erros }
 }
 
-// Ajusta caminhos relativos de uma linha `importar` escrita em `arquivo_relativo` para que
+// Ajusta caminhos relativos de uma linha `importar` escrita em `arquivoRelativo` para que
 // funcionem a partir de `.liquido/`.
-funcao ajustar_importacao(linha_importacao, arquivo_relativo) {
+funcao ajustarImportacao(linhaImportacao, arquivoRelativo) {
     var aspas = "\""
-    var inicio = linha_importacao.encontrar("\"")
+    var inicio = linhaImportacao.encontrar("\"")
     se (inicio < 0) {
         aspas = "'"
-        inicio = linha_importacao.encontrar("'")
+        inicio = linhaImportacao.encontrar("'")
     }
-    se (inicio < 0) { retorna linha_importacao }
-    var fim = textos.encontrar_a_partir(linha_importacao, aspas, inicio + 1)
-    se (fim < 0) { retorna linha_importacao }
-    var caminho = linha_importacao.subtexto(inicio + 1, fim)
-    se (nao textos.comeca_com(caminho, "./") e nao textos.comeca_com(caminho, "../")) { retorna linha_importacao }
+    se (inicio < 0) { retorna linhaImportacao }
+    var fim = textos.encontrarAPartir(linhaImportacao, aspas, inicio + 1)
+    se (fim < 0) { retorna linhaImportacao }
+    var caminho = linhaImportacao.subtexto(inicio + 1, fim)
+    se (nao textos.comecaCom(caminho, "./") e nao textos.comecaCom(caminho, "../")) { retorna linhaImportacao }
 
     // Diretório do arquivo de rota, relativo ao diretório base.
-    var segmentos = arquivo_relativo.dividir("/")
+    var segmentos = arquivoRelativo.dividir("/")
     var diretorio = []
     para (var i = 0; i < segmentos.tamanho() - 1; i = i + 1) { diretorio.adicionar(segmentos[i]) }
     para cada parte em caminho.dividir("/") {
@@ -305,18 +305,18 @@ funcao ajustar_importacao(linha_importacao, arquivo_relativo) {
         }
         diretorio.adicionar(parte)
     }
-    var novo_caminho = "../" + diretorio.juntar("/")
-    retorna linha_importacao.subtexto(0, inicio + 1) + novo_caminho + linha_importacao.subtexto(fim, linha_importacao.tamanho())
+    var novoCaminho = "../" + diretorio.juntar("/")
+    retorna linhaImportacao.subtexto(0, inicio + 1) + novoCaminho + linhaImportacao.subtexto(fim, linhaImportacao.tamanho())
 }
 
-funcao literal_texto(valor) {
-    retorna json_liquido.escapar_texto_json(valor)
+funcao literalTexto(valor) {
+    retorna jsonLiquido.escaparTextoJson(valor)
 }
 
-// Gera o texto do programa. `importacao_liquido` é o caminho usado em `importar ... de`
+// Gera o texto do programa. `importacaoLiquido` é o caminho usado em `importar ... de`
 // para o pacote (normalmente "liquido"). Devolve { "programa": texto, "rotas": [..], "avisos": [..], "erros": [..] }.
-funcao gerar_programa(diretorio_base, linguagem, importacao_liquido) {
-    var descoberta = descobrir_arquivos_rotas(diretorio_base, linguagem)
+funcao gerarPrograma(diretorioBase, linguagem, importacaoLiquido) {
+    var descoberta = descobrirArquivosRotas(diretorioBase, linguagem)
     var avisos = descoberta["avisos"]
     var erros = []
     var rotas = []
@@ -324,48 +324,48 @@ funcao gerar_programa(diretorio_base, linguagem, importacao_liquido) {
     var blocos = []
     var registros = []
     var indice = 0
-    para cada arquivo_relativo em descoberta["arquivos"] {
-        var conteudo = arquivos.lerTexto(arquivos.juntarCaminhos(diretorio_base, arquivo_relativo))
+    para cada arquivoRelativo em descoberta["arquivos"] {
+        var conteudo = arquivos.lerTexto(arquivos.juntarCaminhos(diretorioBase, arquivoRelativo))
         se (conteudo == nulo) {
-            erros.adicionar("Não foi possível ler " + arquivo_relativo + ".")
+            erros.adicionar("Não foi possível ler " + arquivoRelativo + ".")
             continua
         }
-        var caminho_rota = caminho_da_rota(arquivo_relativo, linguagem)
-        var transformada: dicionário = transformar_rota(conteudo, arquivo_relativo)
-        para cada erro_rota em transformada["erros"] { erros.adicionar(erro_rota) }
+        var caminhoRota = caminhoDaRota(arquivoRelativo, linguagem)
+        var transformada: dicionário = transformarRota(conteudo, arquivoRelativo)
+        para cada erroRota em transformada["erros"] { erros.adicionar(erroRota) }
         para cada importacao em transformada["importacoes"] {
-            var ajustada = ajustar_importacao(importacao, arquivo_relativo)
+            var ajustada = ajustarImportacao(importacao, arquivoRelativo)
             se (nao importacoes.inclui(ajustada)) { importacoes.adicionar(ajustada) }
         }
-        var nome_funcao = "rota_liquido_" + texto(indice)
-        blocos.adicionar("// ── " + arquivo_relativo + " → " + caminho_rota + " ──\nfuncao " + nome_funcao + "(liquido) {\n" + transformada["corpo"] + "\n}\n")
-        registros.adicionar(nome_funcao + "(aplicacao_liquido.registrador(" + literal_texto(caminho_rota) + ", " + literal_texto(arquivo_relativo) + "))")
+        var nomeFuncao = "rota_liquido_" + texto(indice)
+        blocos.adicionar("// ── " + arquivoRelativo + " → " + caminhoRota + " ──\nfuncao " + nomeFuncao + "(liquido) {\n" + transformada["corpo"] + "\n}\n")
+        registros.adicionar(nomeFuncao + "(aplicacaoLiquido.registrador(" + literalTexto(caminhoRota) + ", " + literalTexto(arquivoRelativo) + "))")
         para cada documentacao em transformada["documentacoes"] {
-            registros.adicionar("aplicacao_liquido.documentarRota(" + literal_texto(documentacao["metodo"]) + ", " + literal_texto(caminho_rota) + ", " + literal_texto(documentacao["json"]) + ")")
+            registros.adicionar("aplicacaoLiquido.documentarRota(" + literalTexto(documentacao["metodo"]) + ", " + literalTexto(caminhoRota) + ", " + literalTexto(documentacao["json"]) + ")")
         }
-        var descricao_rota = { "arquivo": arquivo_relativo, "caminho": caminho_rota }
-        rotas.adicionar(descricao_rota)
+        var descricaoRota = { "arquivo": arquivoRelativo, "caminho": caminhoRota }
+        rotas.adicionar(descricaoRota)
         indice = indice + 1
     }
 
-    var base_absoluta = textos.substituir_todos(arquivos.caminhoAbsoluto(diretorio_base), "\\", "/")
+    var baseAbsoluta = textos.substituirTodos(arquivos.caminhoAbsoluto(diretorioBase), "\\", "/")
     var programa = "// Programa gerado pelo Líquido a partir de rotas/. Não edite: ele é recriado a cada execução.\n" +
-        "importar tudo como liquido_nucleo de " + literal_texto(importacao_liquido) + "\n"
-    para cada linha_importacao em importacoes { programa = programa + linha_importacao + "\n" }
-    programa = programa + "\nvar aplicacao_liquido = liquido_nucleo.criar_aplicacao(" + literal_texto(base_absoluta) + ")\n\n"
+        "importar tudo como liquidoNucleo de " + literalTexto(importacaoLiquido) + "\n"
+    para cada linhaImportacao em importacoes { programa = programa + linhaImportacao + "\n" }
+    programa = programa + "\nvar aplicacaoLiquido = liquidoNucleo.criarAplicacao(" + literalTexto(baseAbsoluta) + ")\n\n"
     para cada bloco em blocos { programa = programa + bloco + "\n" }
     para cada registro em registros { programa = programa + registro + "\n" }
-    programa = programa + "\nliquido_nucleo.iniciar_aplicacao(aplicacao_liquido)\n"
+    programa = programa + "\nliquidoNucleo.iniciarAplicacao(aplicacaoLiquido)\n"
     retorna { "programa": programa, "rotas": rotas, "avisos": avisos, "erros": erros }
 }
 
-// Gera e grava `.liquido/aplicacao.delegua`. Devolve o resultado de `gerar_programa` com
+// Gera e grava `.liquido/aplicacao.delegua`. Devolve o resultado de `gerarPrograma` com
 // "caminho" do arquivo escrito (ou "" em caso de falha).
-funcao gerar_arquivo(diretorio_base, linguagem, importacao_liquido) {
-    var resultado: dicionário = gerar_programa(diretorio_base, linguagem, importacao_liquido)
-    var diretorio_gerado = arquivos.juntarCaminhos(diretorio_base, nome_diretorio_gerado)
-    var caminho = arquivos.juntarCaminhos(diretorio_gerado, nome_programa_gerado)
-    se (nao arquivos.criarDiretorio(diretorio_gerado) ou nao arquivos.escreverTexto(caminho, resultado["programa"])) {
+funcao gerarArquivo(diretorioBase, linguagem, importacaoLiquido) {
+    var resultado: dicionário = gerarPrograma(diretorioBase, linguagem, importacaoLiquido)
+    var diretorioGerado = arquivos.juntarCaminhos(diretorioBase, nomeDiretorioGerado)
+    var caminho = arquivos.juntarCaminhos(diretorioGerado, nomeProgramaGerado)
+    se (nao arquivos.criarDiretorio(diretorioGerado) ou nao arquivos.escreverTexto(caminho, resultado["programa"])) {
         resultado["erros"].adicionar("Não foi possível escrever " + caminho + ".")
         resultado["caminho"] = ""
         retorna resultado

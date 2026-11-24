@@ -5,22 +5,22 @@ importar tudo como foles de "foles"
 importar tudo como textos de "../utilidades/texto.delegua"
 
 // Converte cada `estilos/*.foles`. Devolve { "escritos": [caminhos], "erros": [..] }.
-funcao escrever_estilos(diretorio_base, diretorio_destino_relativo) {
+funcao escreverEstilos(diretorioBase, diretorioDestinoRelativo) {
     var escritos = []
     var erros = []
-    var diretorio_estilos = arquivos.juntarCaminhos(diretorio_base, "estilos")
-    se (nao arquivos.eDiretorio(diretorio_estilos)) {
+    var diretorioEstilos = arquivos.juntarCaminhos(diretorioBase, "estilos")
+    se (nao arquivos.eDiretorio(diretorioEstilos)) {
         retorna { "escritos": escritos, "erros": erros }
     }
-    var diretorio_destino = arquivos.juntarCaminhos(diretorio_base, diretorio_destino_relativo)
-    se (nao arquivos.criarDiretorio(diretorio_destino)) {
-        erros.adicionar("Não foi possível criar o diretório " + diretorio_destino + ".")
+    var diretorioDestino = arquivos.juntarCaminhos(diretorioBase, diretorioDestinoRelativo)
+    se (nao arquivos.criarDiretorio(diretorioDestino)) {
+        erros.adicionar("Não foi possível criar o diretório " + diretorioDestino + ".")
         retorna { "escritos": escritos, "erros": erros }
     }
-    para cada nome_listado em arquivos.listarDiretorio(diretorio_estilos) {
-        var nome = "" + nome_listado
-        se (nao textos.termina_com(nome, ".foles")) { continua }
-        var origem = arquivos.juntarCaminhos(diretorio_estilos, nome)
+    para cada nomeListado em arquivos.listarDiretorio(diretorioEstilos) {
+        var nome = "" + nomeListado
+        se (nao textos.terminaCom(nome, ".foles")) { continua }
+        var origem = arquivos.juntarCaminhos(diretorioEstilos, nome)
         var conteudo = arquivos.lerTexto(origem)
         se (conteudo == nulo) {
             erros.adicionar("Não foi possível ler " + origem + ".")
@@ -35,7 +35,7 @@ funcao escrever_estilos(diretorio_base, diretorio_destino_relativo) {
             erros.adicionar("Erro no arquivo de estilo: " + origem + " — " + erro.mensagem + ". Pulando este arquivo.")
         }
         se (falhou) { continua }
-        var destino = arquivos.juntarCaminhos(diretorio_destino, nome.subtexto(0, nome.tamanho() - 6) + ".css")
+        var destino = arquivos.juntarCaminhos(diretorioDestino, nome.subtexto(0, nome.tamanho() - 6) + ".css")
         se (arquivos.escreverTexto(destino, css)) {
             escritos.adicionar(destino)
         } senao {

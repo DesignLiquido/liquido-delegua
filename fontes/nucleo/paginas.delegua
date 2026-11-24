@@ -1,11 +1,11 @@
 // Páginas HTML padrão do Líquido: rota não encontrada e erro de execução.
 importar tudo como textos de "../utilidades/texto.delegua"
 
-funcao estilo_comum(cor_topo, cor_borda_titulo) {
+funcao estiloComum(corTopo, corBordaTitulo) {
     retorna "        :root {\n" +
         "            --fundo: #f4f6f8;\n" +
         "            --texto: #333;\n" +
-        "            --cor-topo: " + cor_topo + ";\n" +
+        "            --cor-topo: " + corTopo + ";\n" +
         "            --branco: #ffffff;\n" +
         "            --borda: #e1e4e8;\n" +
         "            --fundo-codigo: #2d2d2d;\n" +
@@ -29,7 +29,7 @@ funcao estilo_comum(cor_topo, cor_borda_titulo) {
         "        h1 { margin: 0; font-size: 2.2rem; font-weight: 600; }\n" +
         "        h2 {\n" +
         "            color: var(--cor-topo);\n" +
-        "            border-bottom: 2px solid " + cor_borda_titulo + ";\n" +
+        "            border-bottom: 2px solid " + corBordaTitulo + ";\n" +
         "            padding-bottom: 10px;\n" +
         "            margin-top: 40px;\n" +
         "            font-size: 1.5rem;\n" +
@@ -57,34 +57,34 @@ funcao estilo_comum(cor_topo, cor_borda_titulo) {
         "        ul.pilha { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 15px; }\n"
 }
 
-funcao montar_pagina(titulo_pagina, titulo, conteudo, cor_topo, cor_borda_titulo) {
+funcao montarPagina(tituloPagina, titulo, conteudo, corTopo, corBordaTitulo) {
     retorna "<!DOCTYPE html>\n<html lang=\"pt\">\n<head>\n" +
         "    <meta charset=\"UTF-8\">\n" +
         "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
-        "    <title>" + titulo_pagina + "</title>\n" +
-        "    <style>\n" + estilo_comum(cor_topo, cor_borda_titulo) + "    </style>\n" +
+        "    <title>" + tituloPagina + "</title>\n" +
+        "    <style>\n" + estiloComum(corTopo, corBordaTitulo) + "    </style>\n" +
         "</head>\n<body>\n" +
         "    <div class=\"cabecalho\"><div class=\"container\"><h1>" + titulo + "</h1></div></div>\n" +
         "    <div class=\"container conteudo\">\n" + conteudo + "    </div>\n" +
         "</body>\n</html>"
 }
 
-funcao pagina_nao_encontrada(metodo, caminho) {
+funcao paginaNaoEncontrada(metodo, caminho) {
     var conteudo = "        <h2>Detalhes da requisição</h2>\n" +
-        "        <pre>" + textos.escapar_html(metodo) + " " + textos.escapar_html(caminho) + "</pre>\n" +
+        "        <pre>" + textos.escaparHtml(metodo) + " " + textos.escaparHtml(caminho) + "</pre>\n" +
         "        <div class=\"caixa\">\n" +
         "            <strong>Dica:</strong> Verifique se o endereço digitado está correto.\n" +
         "            Utilize a ferramenta de documentação em <a href=\"/docs\">/docs</a>\n" +
         "            para consultar as rotas disponíveis.\n" +
         "        </div>\n"
-    retorna montar_pagina("Página não encontrada — Líquido", "Página não encontrada", conteudo, "#4a90d9", "#cce0ff")
+    retorna montarPagina("Página não encontrada — Líquido", "Página não encontrada", conteudo, "#4a90d9", "#cce0ff")
 }
 
-funcao pagina_erro(linhas_erro) {
+funcao paginaErro(linhasErro) {
     var itens = ""
-    para cada linha em linhas_erro {
-        itens = itens + "            <li class=\"caixa\"><pre>" + textos.escapar_html(linha) + "</pre></li>\n"
+    para cada linha em linhasErro {
+        itens = itens + "            <li class=\"caixa\"><pre>" + textos.escaparHtml(linha) + "</pre></li>\n"
     }
     var conteudo = "        <h2>Pilha de Execução</h2>\n        <ul class=\"pilha\">\n" + itens + "        </ul>\n"
-    retorna montar_pagina("Erro de Execução - Líquido", "Ocorreu um erro", conteudo, "#dc3545", "#ffcccc")
+    retorna montarPagina("Erro de Execução - Líquido", "Ocorreu um erro", conteudo, "#dc3545", "#ffcccc")
 }

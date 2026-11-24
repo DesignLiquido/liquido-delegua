@@ -2,7 +2,7 @@
 importar tudo como criptografia de "criptografia"
 importar tudo como textos de "../utilidades/texto.delegua"
 
-var textos_status = {
+var textosStatus = {
     "100": "Continue",
     "101": "Switching Protocols",
     "200": "OK",
@@ -35,18 +35,18 @@ var textos_status = {
     "503": "Service Unavailable"
 }
 
-funcao texto_status(codigo) {
+funcao textoStatus(codigo) {
     var chave = texto(codigo)
-    se (textos_status.contem(chave)) { retorna textos_status[chave] }
+    se (textosStatus.contem(chave)) { retorna textosStatus[chave] }
     retorna "Status " + chave
 }
 
-var metodos_conhecidos = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "COPY", "LOCK", "UNLOCK", "PURGE", "PROPFIND", "LINK", "UNLINK", "VIEW", "TRACE", "CONNECT"]
+var metodosConhecidos = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "COPY", "LOCK", "UNLOCK", "PURGE", "PROPFIND", "LINK", "UNLINK", "VIEW", "TRACE", "CONNECT"]
 
 // Analisa a linha de requisição e os cabeçalhos (texto até "\r\n\r\n", inclusive ou não).
 // Devolve { "erro": "", "metodo", "alvo", "versao", "cabecalhos" }. Nomes de cabeçalhos ficam em minúsculas.
-funcao analisar_cabecalho_requisicao(texto_cabecalho) {
-    var normalizado = textos.substituir_todos("" + texto_cabecalho, "\r\n", "\n")
+funcao analisarCabecalhoRequisicao(textoCabecalho) {
+    var normalizado = textos.substituirTodos("" + textoCabecalho, "\r\n", "\n")
     var linhas = normalizado.dividir("\n")
     var cabecalhos = {}
     se (linhas.tamanho() == 0 ou linhas[0].aparar() == "") {
@@ -59,7 +59,7 @@ funcao analisar_cabecalho_requisicao(texto_cabecalho) {
     }
     var metodo = partes[0].maiusculo()
     var versao = partes[2].maiusculo()
-    se (nao textos.comeca_com(versao, "HTTP/")) {
+    se (nao textos.comecaCom(versao, "HTTP/")) {
         retorna { "erro": "Versão HTTP inválida", "metodo": metodo, "alvo": partes[1], "versao": versao, "cabecalhos": cabecalhos }
     }
 
@@ -69,60 +69,60 @@ funcao analisar_cabecalho_requisicao(texto_cabecalho) {
         var separador = linha.encontrar(":")
         se (separador <= 0) { continua }
         var nome = linha.subtexto(0, separador).aparar().minusculo()
-        var valor_cabecalho = linha.subtexto(separador + 1, linha.tamanho()).aparar()
+        var valorCabecalho = linha.subtexto(separador + 1, linha.tamanho()).aparar()
         se (cabecalhos.contem(nome)) {
             // Cabeçalhos repetidos são combinados, como manda a RFC 9110 (exceto set-cookie).
-            cabecalhos[nome] = cabecalhos[nome] + ", " + valor_cabecalho
+            cabecalhos[nome] = cabecalhos[nome] + ", " + valorCabecalho
         } senao {
-            cabecalhos[nome] = valor_cabecalho
+            cabecalhos[nome] = valorCabecalho
         }
     }
 
     retorna { "erro": "", "metodo": metodo, "alvo": partes[1], "versao": versao, "cabecalhos": cabecalhos }
 }
 
-funcao eh_metodo_conhecido(metodo) {
-    retorna metodos_conhecidos.inclui(metodo)
+funcao ehMetodoConhecido(metodo) {
+    retorna metodosConhecidos.inclui(metodo)
 }
 
 // Quantidade de bytes do texto em UTF-8. Delégua não expõe códigos de caracteres,
 // então o tamanho é obtido a partir da codificação Base64 (que codifica os bytes UTF-8).
-funcao tamanho_em_bytes(conteudo) {
-    var texto_conteudo = "" + conteudo
-    se (texto_conteudo == "") { retorna 0 }
-    var base64 = criptografia.codificarBase64(texto_conteudo)
+funcao tamanhoEmBytes(conteudo) {
+    var textoConteudo = "" + conteudo
+    se (textoConteudo == "") { retorna 0 }
+    var base64 = criptografia.codificarBase64(textoConteudo)
     var preenchimento = 0
-    se (textos.termina_com(base64, "==")) { preenchimento = 2 }
-    senao se (textos.termina_com(base64, "=")) { preenchimento = 1 }
+    se (textos.terminaCom(base64, "==")) { preenchimento = 2 }
+    senao se (textos.terminaCom(base64, "=")) { preenchimento = 1 }
     retorna inteiro(base64.tamanho() / 4) * 3 - preenchimento
 }
 
 // Monta a mensagem de resposta.
 // `cabecalhos` é um vetor de pares [nome, valor], para permitir nomes repetidos (Set-Cookie).
-funcao montar_resposta(codigo_status, cabecalhos, corpo, incluir_corpo) {
-    var mensagem = "HTTP/1.1 " + texto(codigo_status) + " " + texto_status(codigo_status) + "\r\n"
-    var tem_tamanho = falso
+funcao montarResposta(codigoStatus, cabecalhos, corpo, incluirCorpo) {
+    var mensagem = "HTTP/1.1 " + texto(codigoStatus) + " " + textoStatus(codigoStatus) + "\r\n"
+    var temTamanho = falso
     para cada par em cabecalhos {
-        se (par[0].minusculo() == "content-length") { tem_tamanho = verdadeiro }
+        se (par[0].minusculo() == "content-length") { temTamanho = verdadeiro }
         mensagem = mensagem + par[0] + ": " + par[1] + "\r\n"
     }
-    var texto_corpo = ""
-    se (corpo != nulo) { texto_corpo = "" + corpo }
-    var sem_corpo = codigo_status == 204 ou codigo_status == 304 ou (codigo_status >= 100 e codigo_status < 200)
-    se (nao tem_tamanho e nao sem_corpo) {
-        mensagem = mensagem + "Content-Length: " + texto(tamanho_em_bytes(texto_corpo)) + "\r\n"
+    var textoCorpo = ""
+    se (corpo != nulo) { textoCorpo = "" + corpo }
+    var semCorpo = codigoStatus == 204 ou codigoStatus == 304 ou (codigoStatus >= 100 e codigoStatus < 200)
+    se (nao temTamanho e nao semCorpo) {
+        mensagem = mensagem + "Content-Length: " + texto(tamanhoEmBytes(textoCorpo)) + "\r\n"
     }
     mensagem = mensagem + "Connection: close\r\n\r\n"
-    se (incluir_corpo e nao sem_corpo) {
-        mensagem = mensagem + texto_corpo
+    se (incluirCorpo e nao semCorpo) {
+        mensagem = mensagem + textoCorpo
     }
     retorna mensagem
 }
 
 // Linha de status e cabeçalhos, sem corpo e sem Content-Length (para corpos enviados à parte,
 // como arquivos binários; a conexão é encerrada ao final).
-funcao montar_inicio_resposta(codigo_status, cabecalhos) {
-    var mensagem = "HTTP/1.1 " + texto(codigo_status) + " " + texto_status(codigo_status) + "\r\n"
+funcao montarInicioResposta(codigoStatus, cabecalhos) {
+    var mensagem = "HTTP/1.1 " + texto(codigoStatus) + " " + textoStatus(codigoStatus) + "\r\n"
     para cada par em cabecalhos {
         mensagem = mensagem + par[0] + ": " + par[1] + "\r\n"
     }

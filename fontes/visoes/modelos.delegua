@@ -11,103 +11,103 @@
 // Como no resto do Líquido, funções recursivas usam laços por índice e a tabela `adiante`
 // para chamar funções declaradas mais adiante no módulo.
 importar tudo como textos de "../utilidades/texto.delegua"
-importar tudo como json_liquido de "../utilidades/json.delegua"
+importar tudo como jsonLiquido de "../utilidades/json.delegua"
 
 var adiante = {}
 
-var nomes_cada = ["each", "cada"]
-var nomes_se = ["if", "se"]
-var nomes_exceto = ["unless", "senao", "senão", "exceto"]
-var nomes_com = ["with", "com"]
-var nomes_senao = ["else", "senao", "senão"]
+var nomesCada = ["each", "cada"]
+var nomesSe = ["if", "se"]
+var nomesExceto = ["unless", "senao", "senão", "exceto"]
+var nomesCom = ["with", "com"]
+var nomesSenao = ["else", "senao", "senão"]
 
 // ── Análise léxica: divide o modelo em textos e marcações ──
 
-funcao separar_marcacoes(modelo) {
-    var texto_modelo = "" + modelo
+funcao separarMarcacoes(modelo) {
+    var textoModelo = "" + modelo
     var partes = []
     var posicao = 0
-    enquanto (posicao < texto_modelo.tamanho()) {
-        var abertura = textos.encontrar_a_partir(texto_modelo, "{{", posicao)
+    enquanto (posicao < textoModelo.tamanho()) {
+        var abertura = textos.encontrarAPartir(textoModelo, "{{", posicao)
         se (abertura < 0) {
-            var parte_final = { "tipo_parte": "texto", "conteudo": texto_modelo.subtexto(posicao, texto_modelo.tamanho()) }
-            partes.adicionar(parte_final)
+            var parteFinal = { "tipoParte": "texto", "conteudo": textoModelo.subtexto(posicao, textoModelo.tamanho()) }
+            partes.adicionar(parteFinal)
             sustar
         }
         se (abertura > posicao) {
-            var parte_texto = { "tipo_parte": "texto", "conteudo": texto_modelo.subtexto(posicao, abertura) }
-            partes.adicionar(parte_texto)
+            var parteTexto = { "tipoParte": "texto", "conteudo": textoModelo.subtexto(posicao, abertura) }
+            partes.adicionar(parteTexto)
         }
-        var triplo = texto_modelo.subtexto(abertura, abertura + 3) == "{{{"
-        var fim_marcacao = "}}"
-        var inicio_conteudo = abertura + 2
+        var triplo = textoModelo.subtexto(abertura, abertura + 3) == "{{{"
+        var fimMarcacao = "}}"
+        var inicioConteudo = abertura + 2
         se (triplo) {
-            fim_marcacao = "}}}"
-            inicio_conteudo = abertura + 3
+            fimMarcacao = "}}}"
+            inicioConteudo = abertura + 3
         }
-        se (texto_modelo.subtexto(abertura, abertura + 5) == "{{!--") {
-            fim_marcacao = "--}}"
+        se (textoModelo.subtexto(abertura, abertura + 5) == "{{!--") {
+            fimMarcacao = "--}}"
         }
-        var fechamento = textos.encontrar_a_partir(texto_modelo, fim_marcacao, inicio_conteudo)
+        var fechamento = textos.encontrarAPartir(textoModelo, fimMarcacao, inicioConteudo)
         se (fechamento < 0) {
             // Marcação sem fechamento: mantém o restante como texto.
-            var parte_resto = { "tipo_parte": "texto", "conteudo": texto_modelo.subtexto(abertura, texto_modelo.tamanho()) }
-            partes.adicionar(parte_resto)
+            var parteResto = { "tipoParte": "texto", "conteudo": textoModelo.subtexto(abertura, textoModelo.tamanho()) }
+            partes.adicionar(parteResto)
             sustar
         }
-        var conteudo = texto_modelo.subtexto(inicio_conteudo, fechamento).aparar()
-        posicao = fechamento + fim_marcacao.tamanho()
+        var conteudo = textoModelo.subtexto(inicioConteudo, fechamento).aparar()
+        posicao = fechamento + fimMarcacao.tamanho()
         se (conteudo.tamanho() > 0 e conteudo[0] == "!") { continua }
         se (triplo) {
-            var parte_bruta = { "tipo_parte": "bruto", "conteudo": conteudo }
-            partes.adicionar(parte_bruta)
+            var parteBruta = { "tipoParte": "bruto", "conteudo": conteudo }
+            partes.adicionar(parteBruta)
         } senao se (conteudo.tamanho() > 0 e conteudo[0] == "#") {
-            var corpo_abertura = conteudo.subtexto(1, conteudo.tamanho()).aparar()
-            var espaco = corpo_abertura.encontrar(" ")
-            var nome_bloco = corpo_abertura
+            var corpoAbertura = conteudo.subtexto(1, conteudo.tamanho()).aparar()
+            var espaco = corpoAbertura.encontrar(" ")
+            var nomeBloco = corpoAbertura
             var argumento = ""
             se (espaco > 0) {
-                nome_bloco = corpo_abertura.subtexto(0, espaco)
-                argumento = corpo_abertura.subtexto(espaco + 1, corpo_abertura.tamanho()).aparar()
+                nomeBloco = corpoAbertura.subtexto(0, espaco)
+                argumento = corpoAbertura.subtexto(espaco + 1, corpoAbertura.tamanho()).aparar()
             }
-            var parte_abertura = { "tipo_parte": "abertura", "conteudo": nome_bloco, "argumento": argumento }
-            partes.adicionar(parte_abertura)
+            var parteAbertura = { "tipoParte": "abertura", "conteudo": nomeBloco, "argumento": argumento }
+            partes.adicionar(parteAbertura)
         } senao se (conteudo.tamanho() > 0 e conteudo[0] == "/") {
-            var parte_fechamento = { "tipo_parte": "fechamento", "conteudo": conteudo.subtexto(1, conteudo.tamanho()).aparar() }
-            partes.adicionar(parte_fechamento)
-        } senao se (nomes_senao.inclui(conteudo) ou conteudo == "^") {
-            var parte_senao = { "tipo_parte": "senao", "conteudo": conteudo }
-            partes.adicionar(parte_senao)
+            var parteFechamento = { "tipoParte": "fechamento", "conteudo": conteudo.subtexto(1, conteudo.tamanho()).aparar() }
+            partes.adicionar(parteFechamento)
+        } senao se (nomesSenao.inclui(conteudo) ou conteudo == "^") {
+            var parteSenao = { "tipoParte": "senao", "conteudo": conteudo }
+            partes.adicionar(parteSenao)
         } senao {
-            var parte_variavel = { "tipo_parte": "variavel", "conteudo": conteudo }
-            partes.adicionar(parte_variavel)
+            var parteVariavel = { "tipoParte": "variavel", "conteudo": conteudo }
+            partes.adicionar(parteVariavel)
         }
     }
     retorna partes
 }
 
 // ── Análise sintática: monta a árvore de nós ──
-// Estado: { "partes", "posicao", "erro" }. Cada nó: { "tipo_no", "conteudo", "argumento", "filhos", "alternativa" }.
+// Estado: { "partes", "posicao", "erro" }. Cada nó: { "tipoNo", "conteudo", "argumento", "filhos", "alternativa" }.
 
-funcao analisar_nos(estado, nome_bloco_aberto) {
+funcao analisarNos(estado, nomeBlocoAberto) {
     var nos = []
     var partes = estado["partes"]
     enquanto (estado["posicao"] < partes.tamanho() e estado["erro"] == "") {
         var parte = partes[estado["posicao"]]
-        var tipo_parte = parte["tipo_parte"]
-        se (tipo_parte == "fechamento" ou tipo_parte == "senao") {
-            se (nome_bloco_aberto == "") {
+        var tipoParte = parte["tipoParte"]
+        se (tipoParte == "fechamento" ou tipoParte == "senao") {
+            se (nomeBlocoAberto == "") {
                 estado["erro"] = "Marcação '{{" + parte["conteudo"] + "}}' sem bloco aberto."
             }
             retorna nos
         }
         estado["posicao"] = estado["posicao"] + 1
-        se (tipo_parte == "abertura") {
-            var filhos: vetor = adiante["analisar_nos"](estado, parte["conteudo"])
+        se (tipoParte == "abertura") {
+            var filhos: vetor = adiante["analisarNos"](estado, parte["conteudo"])
             var alternativa = []
-            se (estado["erro"] == "" e estado["posicao"] < partes.tamanho() e partes[estado["posicao"]]["tipo_parte"] == "senao") {
+            se (estado["erro"] == "" e estado["posicao"] < partes.tamanho() e partes[estado["posicao"]]["tipoParte"] == "senao") {
                 estado["posicao"] = estado["posicao"] + 1
-                alternativa = adiante["analisar_nos"](estado, parte["conteudo"])
+                alternativa = adiante["analisarNos"](estado, parte["conteudo"])
             }
             se (estado["erro"] != "") { retorna nos }
             se (estado["posicao"] >= partes.tamanho()) {
@@ -120,106 +120,106 @@ funcao analisar_nos(estado, nome_bloco_aberto) {
                 retorna nos
             }
             estado["posicao"] = estado["posicao"] + 1
-            var no_bloco = {
-                "tipo_no": "bloco",
+            var noBloco = {
+                "tipoNo": "bloco",
                 "conteudo": parte["conteudo"],
                 "argumento": parte["argumento"],
                 "filhos": filhos,
                 "alternativa": alternativa
             }
-            nos.adicionar(no_bloco)
+            nos.adicionar(noBloco)
         } senao {
-            var sem_filhos = []
-            var no_simples = {
-                "tipo_no": tipo_parte,
+            var semFilhos = []
+            var noSimples = {
+                "tipoNo": tipoParte,
                 "conteudo": parte["conteudo"],
                 "argumento": "",
-                "filhos": sem_filhos,
-                "alternativa": sem_filhos
+                "filhos": semFilhos,
+                "alternativa": semFilhos
             }
-            nos.adicionar(no_simples)
+            nos.adicionar(noSimples)
         }
     }
-    se (nome_bloco_aberto != "" e estado["erro"] == "" e estado["posicao"] >= partes.tamanho()) {
-        estado["erro"] = "Bloco '{{#" + nome_bloco_aberto + "}}' não foi fechado."
+    se (nomeBlocoAberto != "" e estado["erro"] == "" e estado["posicao"] >= partes.tamanho()) {
+        estado["erro"] = "Bloco '{{#" + nomeBlocoAberto + "}}' não foi fechado."
     }
     retorna nos
 }
-adiante["analisar_nos"] = analisar_nos
+adiante["analisarNos"] = analisarNos
 
 // ── Resolução de valores ──
 // Um contexto é { "dados", "pai", "indice", "chave", "primeiro", "ultimo" }; `pai` é nulo na raiz.
 
-funcao criar_contexto(dados, pai) {
+funcao criarContexto(dados, pai) {
     retorna { "dados": dados, "pai": pai, "indice": nulo, "chave": nulo, "primeiro": nulo, "ultimo": nulo }
 }
 
-funcao eh_dicionario(valor) {
+funcao ehDicionario(valor) {
     se (valor == nulo) { retorna falso }
-    var tipo_valor = tipo de valor
-    retorna tipo_valor == "dicionário"
+    var tipoValor = tipo de valor
+    retorna tipoValor == "dicionário"
 }
 
-funcao eh_vetor(valor) {
+funcao ehVetor(valor) {
     se (valor == nulo) { retorna falso }
-    var tipo_valor = tipo de valor
-    retorna tipo_valor == "vetor" ou ("" + tipo_valor).terminaCom("[]")
+    var tipoValor = tipo de valor
+    retorna tipoValor == "vetor" ou ("" + tipoValor).terminaCom("[]")
 }
 
-// Resolve `caminho` no contexto e grava em estado_valor["encontrado"]/["resultado"].
-funcao resolver_caminho(contexto, caminho, estado_valor) {
-    estado_valor["encontrado"] = falso
-    estado_valor["resultado"] = nulo
+// Resolve `caminho` no contexto e grava em estadoValor["encontrado"]/["resultado"].
+funcao resolverCaminho(contexto, caminho, estadoValor) {
+    estadoValor["encontrado"] = falso
+    estadoValor["resultado"] = nulo
     var atual = contexto
     var restante = caminho.aparar()
-    enquanto (textos.comeca_com(restante, "../")) {
+    enquanto (textos.comecaCom(restante, "../")) {
         se (atual["pai"] != nulo) { atual = atual["pai"] }
         restante = restante.subtexto(3, restante.tamanho())
     }
     se (restante == "@index" ou restante == "@indice" ou restante == "@índice") {
-        estado_valor["encontrado"] = atual["indice"] != nulo
-        estado_valor["resultado"] = atual["indice"]
+        estadoValor["encontrado"] = atual["indice"] != nulo
+        estadoValor["resultado"] = atual["indice"]
         retorna
     }
     se (restante == "@key" ou restante == "@chave") {
-        estado_valor["encontrado"] = atual["chave"] != nulo
-        estado_valor["resultado"] = atual["chave"]
+        estadoValor["encontrado"] = atual["chave"] != nulo
+        estadoValor["resultado"] = atual["chave"]
         retorna
     }
     se (restante == "@first" ou restante == "@primeiro") {
-        estado_valor["encontrado"] = verdadeiro
-        estado_valor["resultado"] = atual["primeiro"] == verdadeiro
+        estadoValor["encontrado"] = verdadeiro
+        estadoValor["resultado"] = atual["primeiro"] == verdadeiro
         retorna
     }
     se (restante == "@last" ou restante == "@ultimo" ou restante == "@último") {
-        estado_valor["encontrado"] = verdadeiro
-        estado_valor["resultado"] = atual["ultimo"] == verdadeiro
+        estadoValor["encontrado"] = verdadeiro
+        estadoValor["resultado"] = atual["ultimo"] == verdadeiro
         retorna
     }
     var dados = atual["dados"]
     se (restante == "this" ou restante == "isto" ou restante == ".") {
-        estado_valor["encontrado"] = verdadeiro
-        estado_valor["resultado"] = dados
+        estadoValor["encontrado"] = verdadeiro
+        estadoValor["resultado"] = dados
         retorna
     }
-    se (textos.comeca_com(restante, "this.")) { restante = restante.subtexto(5, restante.tamanho()) }
-    senao se (textos.comeca_com(restante, "isto.")) { restante = restante.subtexto(5, restante.tamanho()) }
+    se (textos.comecaCom(restante, "this.")) { restante = restante.subtexto(5, restante.tamanho()) }
+    senao se (textos.comecaCom(restante, "isto.")) { restante = restante.subtexto(5, restante.tamanho()) }
 
     var segmentos = restante.dividir(".")
-    var valor_atual = dados
+    var valorAtual = dados
     para (var i = 0; i < segmentos.tamanho(); i = i + 1) {
         var segmento = segmentos[i]
-        se (eh_dicionario(valor_atual) e valor_atual.contem(segmento)) {
-            valor_atual = valor_atual[segmento]
-        } senao se (eh_vetor(valor_atual) e segmento != "" e textos.eh_digito(segmento[0])) {
-            var posicao_vetor = inteiro(segmento)
-            se (posicao_vetor >= valor_atual.tamanho()) { retorna }
-            valor_atual = valor_atual[posicao_vetor]
+        se (ehDicionario(valorAtual) e valorAtual.contem(segmento)) {
+            valorAtual = valorAtual[segmento]
+        } senao se (ehVetor(valorAtual) e segmento != "" e textos.ehDigito(segmento[0])) {
+            var posicaoVetor = inteiro(segmento)
+            se (posicaoVetor >= valorAtual.tamanho()) { retorna }
+            valorAtual = valorAtual[posicaoVetor]
         } senao se (segmento == "length" ou segmento == "tamanho") {
-            se (eh_vetor(valor_atual)) {
-                valor_atual = valor_atual.tamanho()
-            } senao se (eh_dicionario(valor_atual)) {
-                valor_atual = valor_atual.chaves().tamanho()
+            se (ehVetor(valorAtual)) {
+                valorAtual = valorAtual.tamanho()
+            } senao se (ehDicionario(valorAtual)) {
+                valorAtual = valorAtual.chaves().tamanho()
             } senao {
                 retorna
             }
@@ -227,136 +227,136 @@ funcao resolver_caminho(contexto, caminho, estado_valor) {
             retorna
         }
     }
-    estado_valor["encontrado"] = verdadeiro
-    estado_valor["resultado"] = valor_atual
+    estadoValor["encontrado"] = verdadeiro
+    estadoValor["resultado"] = valorAtual
 }
 
-funcao valor_no_contexto(contexto, caminho) {
-    var estado_valor = { "encontrado": falso, "resultado": nulo }
+funcao valorNoContexto(contexto, caminho) {
+    var estadoValor = { "encontrado": falso, "resultado": nulo }
     var atual = contexto
-    resolver_caminho(atual, caminho, estado_valor)
+    resolverCaminho(atual, caminho, estadoValor)
     // Como no Handlebars, variáveis simples não encontradas são procuradas nos contextos acima.
-    enquanto (nao estado_valor["encontrado"] e atual["pai"] != nulo e nao caminho.inclui("../") e nao textos.comeca_com(caminho, "@")) {
+    enquanto (nao estadoValor["encontrado"] e atual["pai"] != nulo e nao caminho.inclui("../") e nao textos.comecaCom(caminho, "@")) {
         atual = atual["pai"]
-        resolver_caminho(atual, caminho, estado_valor)
+        resolverCaminho(atual, caminho, estadoValor)
     }
-    var lista = [estado_valor["resultado"]]
+    var lista = [estadoValor["resultado"]]
     retorna lista
 }
 
-funcao eh_verdadeiro(valor) {
+funcao ehVerdadeiro(valor) {
     se (valor == nulo) { retorna falso }
-    var tipo_valor = tipo de valor
-    se (tipo_valor == "lógico") { retorna valor }
-    se (tipo_valor == "texto") { retorna valor != "" }
-    se (tipo_valor == "número") { retorna valor != 0 }
-    se (eh_vetor(valor)) { retorna valor.tamanho() > 0 }
+    var tipoValor = tipo de valor
+    se (tipoValor == "lógico") { retorna valor }
+    se (tipoValor == "texto") { retorna valor != "" }
+    se (tipoValor == "número") { retorna valor != 0 }
+    se (ehVetor(valor)) { retorna valor.tamanho() > 0 }
     retorna verdadeiro
 }
 
-funcao como_texto(valor) {
+funcao comoTexto(valor) {
     se (valor == nulo) { retorna "" }
-    var tipo_valor = tipo de valor
-    se (tipo_valor == "texto") { retorna valor }
-    se (tipo_valor == "lógico") {
+    var tipoValor = tipo de valor
+    se (tipoValor == "texto") { retorna valor }
+    se (tipoValor == "lógico") {
         se (valor) { retorna "true" }
         retorna "false"
     }
-    se (eh_vetor(valor)) {
+    se (ehVetor(valor)) {
         var partes = []
         para (var i = 0; i < valor.tamanho(); i = i + 1) {
-            partes.adicionar(como_texto(valor[i]))
+            partes.adicionar(comoTexto(valor[i]))
         }
         retorna partes.juntar(",")
     }
-    se (eh_dicionario(valor)) { retorna "[object Object]" }
+    se (ehDicionario(valor)) { retorna "[object Object]" }
     retorna texto(valor)
 }
 
 // ── Renderização ──
 
-funcao renderizar_nos(nos, contexto) {
+funcao renderizarNos(nos, contexto) {
     var saida = ""
     para (var i = 0; i < nos.tamanho(); i = i + 1) {
         var no = nos[i]
-        var tipo_no = no["tipo_no"]
-        se (tipo_no == "texto") {
+        var tipoNo = no["tipoNo"]
+        se (tipoNo == "texto") {
             saida = saida + no["conteudo"]
-        } senao se (tipo_no == "variavel") {
-            var resolvido: vetor = valor_no_contexto(contexto, no["conteudo"])
-            saida = saida + textos.escapar_html(como_texto(resolvido[0]))
-        } senao se (tipo_no == "bruto") {
-            var resolvido_bruto: vetor = valor_no_contexto(contexto, no["conteudo"])
-            saida = saida + como_texto(resolvido_bruto[0])
-        } senao se (tipo_no == "bloco") {
-            saida = saida + adiante["renderizar_bloco"](no, contexto)
+        } senao se (tipoNo == "variavel") {
+            var resolvido: vetor = valorNoContexto(contexto, no["conteudo"])
+            saida = saida + textos.escaparHtml(comoTexto(resolvido[0]))
+        } senao se (tipoNo == "bruto") {
+            var resolvidoBruto: vetor = valorNoContexto(contexto, no["conteudo"])
+            saida = saida + comoTexto(resolvidoBruto[0])
+        } senao se (tipoNo == "bloco") {
+            saida = saida + adiante["renderizarBloco"](no, contexto)
         }
     }
     retorna saida
 }
 
-funcao renderizar_bloco(no, contexto) {
+funcao renderizarBloco(no, contexto) {
     var nome = no["conteudo"]
-    var argumento_resolvido: vetor = valor_no_contexto(contexto, no["argumento"])
-    var alvo = argumento_resolvido[0]
+    var argumentoResolvido: vetor = valorNoContexto(contexto, no["argumento"])
+    var alvo = argumentoResolvido[0]
 
-    se (nomes_se.inclui(nome)) {
-        se (eh_verdadeiro(alvo)) { retorna renderizar_nos(no["filhos"], contexto) }
-        retorna renderizar_nos(no["alternativa"], contexto)
+    se (nomesSe.inclui(nome)) {
+        se (ehVerdadeiro(alvo)) { retorna renderizarNos(no["filhos"], contexto) }
+        retorna renderizarNos(no["alternativa"], contexto)
     }
-    se (nomes_exceto.inclui(nome)) {
-        se (nao eh_verdadeiro(alvo)) { retorna renderizar_nos(no["filhos"], contexto) }
-        retorna renderizar_nos(no["alternativa"], contexto)
+    se (nomesExceto.inclui(nome)) {
+        se (nao ehVerdadeiro(alvo)) { retorna renderizarNos(no["filhos"], contexto) }
+        retorna renderizarNos(no["alternativa"], contexto)
     }
-    se (nomes_com.inclui(nome)) {
-        se (eh_verdadeiro(alvo)) {
-            var contexto_com: dicionário = criar_contexto(alvo, contexto)
-            retorna renderizar_nos(no["filhos"], contexto_com)
+    se (nomesCom.inclui(nome)) {
+        se (ehVerdadeiro(alvo)) {
+            var contextoCom: dicionário = criarContexto(alvo, contexto)
+            retorna renderizarNos(no["filhos"], contextoCom)
         }
-        retorna renderizar_nos(no["alternativa"], contexto)
+        retorna renderizarNos(no["alternativa"], contexto)
     }
-    se (nomes_cada.inclui(nome)) {
+    se (nomesCada.inclui(nome)) {
         var saida = ""
-        se (eh_vetor(alvo) e alvo.tamanho() > 0) {
+        se (ehVetor(alvo) e alvo.tamanho() > 0) {
             para (var i = 0; i < alvo.tamanho(); i = i + 1) {
-                var contexto_item: dicionário = criar_contexto(alvo[i], contexto)
-                contexto_item["indice"] = i
-                contexto_item["primeiro"] = i == 0
-                contexto_item["ultimo"] = i == alvo.tamanho() - 1
-                saida = saida + renderizar_nos(no["filhos"], contexto_item)
+                var contextoItem: dicionário = criarContexto(alvo[i], contexto)
+                contextoItem["indice"] = i
+                contextoItem["primeiro"] = i == 0
+                contextoItem["ultimo"] = i == alvo.tamanho() - 1
+                saida = saida + renderizarNos(no["filhos"], contextoItem)
             }
             retorna saida
         }
-        se (eh_dicionario(alvo) e alvo.chaves().tamanho() > 0) {
+        se (ehDicionario(alvo) e alvo.chaves().tamanho() > 0) {
             var chaves = alvo.chaves()
             para (var j = 0; j < chaves.tamanho(); j = j + 1) {
-                var contexto_chave: dicionário = criar_contexto(alvo[chaves[j]], contexto)
-                contexto_chave["indice"] = j
-                contexto_chave["chave"] = chaves[j]
-                contexto_chave["primeiro"] = j == 0
-                contexto_chave["ultimo"] = j == chaves.tamanho() - 1
-                saida = saida + renderizar_nos(no["filhos"], contexto_chave)
+                var contextoChave: dicionário = criarContexto(alvo[chaves[j]], contexto)
+                contextoChave["indice"] = j
+                contextoChave["chave"] = chaves[j]
+                contextoChave["primeiro"] = j == 0
+                contextoChave["ultimo"] = j == chaves.tamanho() - 1
+                saida = saida + renderizarNos(no["filhos"], contextoChave)
             }
             retorna saida
         }
-        retorna renderizar_nos(no["alternativa"], contexto)
+        retorna renderizarNos(no["alternativa"], contexto)
     }
     // Bloco desconhecido: trata como `se`.
-    se (eh_verdadeiro(alvo)) { retorna renderizar_nos(no["filhos"], contexto) }
-    retorna renderizar_nos(no["alternativa"], contexto)
+    se (ehVerdadeiro(alvo)) { retorna renderizarNos(no["filhos"], contexto) }
+    retorna renderizarNos(no["alternativa"], contexto)
 }
-adiante["renderizar_bloco"] = renderizar_bloco
+adiante["renderizarBloco"] = renderizarBloco
 
 // Renderiza o modelo com os dados. Devolve { "resultado": texto, "erro": "" }.
 funcao renderizar(modelo, dados) {
-    var partes: vetor = separar_marcacoes(modelo)
+    var partes: vetor = separarMarcacoes(modelo)
     var estado = { "partes": partes, "posicao": 0, "erro": "" }
-    var nos: vetor = analisar_nos(estado, "")
+    var nos: vetor = analisarNos(estado, "")
     se (estado["erro"] != "") {
         retorna { "resultado": "", "erro": estado["erro"] }
     }
-    var dados_raiz = dados
-    se (dados_raiz == nulo) { dados_raiz = {} }
-    var contexto: dicionário = criar_contexto(dados_raiz, nulo)
-    retorna { "resultado": renderizar_nos(nos, contexto), "erro": "" }
+    var dadosRaiz = dados
+    se (dadosRaiz == nulo) { dadosRaiz = {} }
+    var contexto: dicionário = criarContexto(dadosRaiz, nulo)
+    retorna { "resultado": renderizarNos(nos, contexto), "erro": "" }
 }

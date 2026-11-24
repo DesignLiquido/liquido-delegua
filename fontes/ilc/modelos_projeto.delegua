@@ -31,7 +31,7 @@ funcao configuracao(arquetipo) {
         "liquido.roteador.helmet = verdadeiro\n"
 }
 
-funcao rota_rest() {
+funcao rotaRest() {
     retorna "@rest.documentacao(\n" +
         "    sumario = \"Um exemplo de rota GET.\",\n" +
         "    descricao = \"Uma descrição mais detalhada sobre como a rota GET funciona.\",\n" +
@@ -56,7 +56,7 @@ funcao rota_rest() {
         "})\n"
 }
 
-funcao rota_mvc() {
+funcao rotaMvc() {
     retorna "liquido.rotaGet(funcao(requisicao, resposta) {\n" +
         "    resposta.lmht({\n" +
         "        \"nome\": \"mundo\"\n" +
@@ -64,7 +64,7 @@ funcao rota_mvc() {
         "})\n"
 }
 
-funcao visao_inicial() {
+funcao visaoInicial() {
     retorna "<lmht>\n" +
         "    <cabeça>\n" +
         "        <meta nome=\"viewport\" conteudo=\"width=device-width, initial-scale=1.0\" />\n" +
@@ -83,7 +83,7 @@ funcao visao_inicial() {
         "</lmht>\n"
 }
 
-funcao estilo_principal() {
+funcao estiloPrincipal() {
     retorna "corpo {\n" +
         "    cor-fundo: #f4f6f8;\n" +
         "    cor: #22303c;\n" +
@@ -98,10 +98,10 @@ funcao estilo_principal() {
 }
 
 funcao leiame(nome, arquetipo) {
-    var tipo_projeto = "API REST"
-    se (arquetipo == "mvc") { tipo_projeto = "MVC (Modelo, Visão, Controlador)" }
+    var tipoProjeto = "API REST"
+    se (arquetipo == "mvc") { tipoProjeto = "MVC (Modelo, Visão, Controlador)" }
     retorna "# " + nome + "\n\n" +
-        "Aplicação " + tipo_projeto + " em [Líquido](https://github.com/DesignLiquido/liquido), escrita em Delégua.\n\n" +
+        "Aplicação " + tipoProjeto + " em [Líquido](https://github.com/DesignLiquido/liquido), escrita em Delégua.\n\n" +
         "## Estrutura\n\n" +
         "- `configuracao.delprops`: configurações da aplicação;\n" +
         "- `rotas/`: uma rota por arquivo; `rotas/inicial.delegua` responde em `/`, `rotas/clientes/[id].delegua` em `/clientes/:id`;\n" +
@@ -114,19 +114,19 @@ funcao leiame(nome, arquetipo) {
 }
 
 // Rota gerada por `liquido gerar rota`, com um tratador por método.
-funcao rota_gerada(metodos, arquetipo) {
-    var texto_rota = ""
+funcao rotaGerada(metodos, arquetipo) {
+    var textoRota = ""
     para cada metodo em metodos {
         var nome = metodo.minusculo()
-        var nome_metodo = "rota" + nome.subtexto(0, 1).maiusculo() + nome.subtexto(1, nome.tamanho())
-        var corpo_rota = "    resposta.json({ \"mensagem\": \"" + metodo.maiusculo() + " ok\" })\n"
-        se (arquetipo == "mvc" e nome == "get") { corpo_rota = "    resposta.lmht({})\n" }
-        texto_rota = texto_rota + "liquido." + nome_metodo + "(funcao(requisicao, resposta) {\n" + corpo_rota + "})\n\n"
+        var nomeMetodo = "rota" + nome.subtexto(0, 1).maiusculo() + nome.subtexto(1, nome.tamanho())
+        var corpoRota = "    resposta.json({ \"mensagem\": \"" + metodo.maiusculo() + " ok\" })\n"
+        se (arquetipo == "mvc" e nome == "get") { corpoRota = "    resposta.lmht({})\n" }
+        textoRota = textoRota + "liquido." + nomeMetodo + "(funcao(requisicao, resposta) {\n" + corpoRota + "})\n\n"
     }
-    retorna texto_rota
+    retorna textoRota
 }
 
-funcao visao_gerada(titulo) {
+funcao visaoGerada(titulo) {
     retorna "<lmht>\n" +
         "    <cabeça>\n" +
         "        <titulo>" + titulo + "</titulo>\n" +

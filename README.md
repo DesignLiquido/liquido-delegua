@@ -20,7 +20,7 @@ O Líquido original roda sobre Express, Handlebars e xml2js. Esta versão não d
 
 ## Como funciona
 
-Em Delégua, `importar` resolve caminhos literais durante a análise sintática, então os arquivos de rota não podem ser descobertos em tempo de execução. O comando `liquido` percorre `rotas/` e gera `.liquido/aplicacao.delegua`, que coloca cada arquivo de rota dentro de `funcao rota_N(liquido) { ... }` e o registra no caminho correspondente. Esse programa é então executado.
+Em Delégua, `importar` resolve caminhos literais durante a análise sintática, então os arquivos de rota não podem ser descobertos em tempo de execução. O comando `liquido` percorre `rotas/` e gera `.liquido/aplicacao.delegua`, que coloca cada arquivo de rota dentro de `funcao rotaN(liquido) { ... }` e o registra no caminho correspondente. Esse programa é então executado.
 
 ## Uso
 

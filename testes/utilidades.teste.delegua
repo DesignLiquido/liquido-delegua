@@ -1,55 +1,55 @@
 importar { grupo, teste, afirmar } de "testes"
 
 var textos = importar("../fontes/utilidades/texto.delegua")
-var json_liquido = importar("../fontes/utilidades/json.delegua")
+var jsonLiquido = importar("../fontes/utilidades/json.delegua")
 
 grupo("Utilidades de texto", funcao() {
     teste("substitui todas as ocorrências", funcao() {
-        afirmar.igual("a-b-c", textos.substituir_todos("aXbXc", "X", "-"))
+        afirmar.igual("a-b-c", textos.substituirTodos("aXbXc", "X", "-"))
     })
 
     teste("prefixos e sufixos", funcao() {
-        afirmar.verdadeiro(textos.comeca_com("/api/x", "/api"))
-        afirmar.falso(textos.comeca_com("/a", "/api"))
-        afirmar.verdadeiro(textos.termina_com("x.delegua", ".delegua"))
-        afirmar.falso(textos.termina_com("x.pitu", ".delegua"))
+        afirmar.verdadeiro(textos.comecaCom("/api/x", "/api"))
+        afirmar.falso(textos.comecaCom("/a", "/api"))
+        afirmar.verdadeiro(textos.terminaCom("x.delegua", ".delegua"))
+        afirmar.falso(textos.terminaCom("x.pitu", ".delegua"))
     })
 
     teste("divide na primeira ocorrência", funcao() {
-        var partes = textos.dividir_primeira("chave=a=b", "=")
+        var partes = textos.dividirPrimeira("chave=a=b", "=")
         afirmar.igual("chave", partes[0])
         afirmar.igual("a=b", partes[1])
-        afirmar.igual(1, textos.dividir_primeira("sem", "=").tamanho())
+        afirmar.igual(1, textos.dividirPrimeira("sem", "=").tamanho())
     })
 
     teste("remove acentos", funcao() {
-        afirmar.igual("pitugues", textos.remover_acentos("pituguês"))
-        afirmar.igual("Delegua", textos.remover_acentos("Delégua"))
+        afirmar.igual("pitugues", textos.removerAcentos("pituguês"))
+        afirmar.igual("Delegua", textos.removerAcentos("Delégua"))
     })
 
     teste("escapa HTML", funcao() {
-        afirmar.igual("&lt;b&gt;&amp;&quot;", textos.escapar_html("<b>&\""))
+        afirmar.igual("&lt;b&gt;&amp;&quot;", textos.escaparHtml("<b>&\""))
     })
 })
 
 grupo("JSON", funcao() {
     teste("serializa valores simples", funcao() {
-        afirmar.igual("null", json_liquido.serializar(nulo))
-        afirmar.igual("true", json_liquido.serializar(verdadeiro))
-        afirmar.igual("1.5", json_liquido.serializar(1.5))
+        afirmar.igual("null", jsonLiquido.serializar(nulo))
+        afirmar.igual("true", jsonLiquido.serializar(verdadeiro))
+        afirmar.igual("1.5", jsonLiquido.serializar(1.5))
         var barra = "\\"
         var aspas = "\""
-        afirmar.igual(aspas + "a" + barra + aspas + "b" + aspas, json_liquido.serializar("a" + aspas + "b"))
+        afirmar.igual(aspas + "a" + barra + aspas + "b" + aspas, jsonLiquido.serializar("a" + aspas + "b"))
     })
 
     teste("serializa estruturas", funcao() {
         var valor = { "id": 1, "nomes": ["a", "b"], "vazio": {}, "nulo": nulo }
-        afirmar.igual("{\"id\":1,\"nomes\":[\"a\",\"b\"],\"vazio\":{},\"nulo\":null}", json_liquido.serializar(valor))
-        afirmar.igual("[]", json_liquido.serializar([]))
+        afirmar.igual("{\"id\":1,\"nomes\":[\"a\",\"b\"],\"vazio\":{},\"nulo\":null}", jsonLiquido.serializar(valor))
+        afirmar.igual("[]", jsonLiquido.serializar([]))
     })
 
     teste("analisa objetos e vetores", funcao() {
-        var resultado = json_liquido.analisar(" { \"a\": [1, 2.5, -3], \"b\": { \"c\": \"ç\\n\" }, \"d\": true, \"e\": null } ")
+        var resultado = jsonLiquido.analisar(" { \"a\": [1, 2.5, -3], \"b\": { \"c\": \"ç\\n\" }, \"d\": true, \"e\": null } ")
         afirmar.igual("", resultado["erro"])
         var valor = resultado["resultado"]
         afirmar.igual(3, valor["a"].tamanho())
@@ -61,12 +61,12 @@ grupo("JSON", funcao() {
 
     teste("ida e volta", funcao() {
         var original = "{\"x\":[{\"y\":\"z\"},false],\"n\":10}"
-        afirmar.igual(original, json_liquido.serializar(json_liquido.analisar(original)["resultado"]))
+        afirmar.igual(original, jsonLiquido.serializar(jsonLiquido.analisar(original)["resultado"]))
     })
 
     teste("informa erros", funcao() {
-        afirmar.diferente("", json_liquido.analisar("{\"a\": }")["erro"])
-        afirmar.diferente("", json_liquido.analisar("[1, 2")["erro"])
-        afirmar.diferente("", json_liquido.analisar("{} x")["erro"])
+        afirmar.diferente("", jsonLiquido.analisar("{\"a\": }")["erro"])
+        afirmar.diferente("", jsonLiquido.analisar("[1, 2")["erro"])
+        afirmar.diferente("", jsonLiquido.analisar("{} x")["erro"])
     })
 })

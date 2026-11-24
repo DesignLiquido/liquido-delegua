@@ -29,9 +29,9 @@ grupo("Modelos", funcao() {
         var dados = { "itens": itens, "prefixo": "-" }
         afirmar.igual("0:a-;1:b-;", renderizar("{{#cada itens}}{{@indice}}:{{nome}}{{../prefixo}};{{/cada}}", dados))
         var numeros = [1, 2, 3]
-        var dados_numeros = { "numeros": numeros }
-        afirmar.igual("1,2,3", renderizar("{{#each numeros}}{{this}}{{#unless @last}},{{/unless}}{{/each}}", dados_numeros))
-        afirmar.igual("nada", renderizar("{{#each faltando}}x{{else}}nada{{/each}}", dados_numeros))
+        var dadosNumeros = { "numeros": numeros }
+        afirmar.igual("1,2,3", renderizar("{{#each numeros}}{{this}}{{#unless @last}},{{/unless}}{{/each}}", dadosNumeros))
+        afirmar.igual("nada", renderizar("{{#each faltando}}x{{else}}nada{{/each}}", dadosNumeros))
     })
 
     teste("laço sobre dicionário e blocos aninhados", funcao() {

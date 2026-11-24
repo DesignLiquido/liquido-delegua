@@ -81,24 +81,24 @@ classe Resposta {
     }
 
     // Define o Content-Type da resposta, por exemplo "text/csv; charset=utf-8".
-    tipoConteudo(tipo_conteudo) {
-        isto.tipoDefinido = tipo_conteudo
+    tipoConteudo(tipoConteudo) {
+        isto.tipoDefinido = tipoConteudo
         retorna isto
     }
 
     // Define um cookie. Opções (dicionário opcional): caminho, dominio, idadeMaxima,
     // expira, seguro, somenteHttp, mesmoSitio.
     cookie(nome, valor, ...opcoes) {
-        var opcoes_cookie = {}
-        se (opcoes.tamanho() > 0 e opcoes[0] != nulo) { opcoes_cookie = opcoes[0] }
-        var definicao = [nome, "" + valor, opcoes_cookie]
+        var opcoesCookie = {}
+        se (opcoes.tamanho() > 0 e opcoes[0] != nulo) { opcoesCookie = opcoes[0] }
+        var definicao = [nome, "" + valor, opcoesCookie]
         isto.cookiesDefinidos.adicionar(definicao)
         retorna isto
     }
 
     limparCookie(nome) {
-        var opcoes_cookie = { "idadeMaxima": 0, "expira": "Thu, 01 Jan 1970 00:00:00 GMT" }
-        var definicao = [nome, "", opcoes_cookie]
+        var opcoesCookie = { "idadeMaxima": 0, "expira": "Thu, 01 Jan 1970 00:00:00 GMT" }
+        var definicao = [nome, "", opcoesCookie]
         isto.cookiesDefinidos.adicionar(definicao)
         retorna isto
     }
@@ -110,6 +110,6 @@ classe Resposta {
     }
 }
 
-funcao criar_resposta() {
+funcao criarResposta() {
     retorna Resposta()
 }
