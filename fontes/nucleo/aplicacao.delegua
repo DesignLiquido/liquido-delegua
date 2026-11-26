@@ -145,7 +145,7 @@ funcao interpretarCorpo(requisicao, configuracaoRoteador) {
     se (tipoConteudo == nulo) { tipoConteudo = "" }
     tipoConteudo = tipoConteudo.minusculo()
     se (tipoConteudo.inclui("application/json") ou tipoConteudo.inclui("+json")) {
-        var analisado = jsonLiquido.analisar(textoCorpo)
+        var analisado = jsonLiquido.analisarJson(textoCorpo)
         se (analisado["erro"] != "") {
             retorna { "erro": "JSON inválido no corpo da requisição: " + analisado["erro"], "corpo": vazio }
         }
@@ -170,7 +170,7 @@ funcao autenticarRequisicao(aplicacao, requisicao) {
     se (autorizacao == nulo) { retorna }
     var token = autorizacao.aparar()
     se (textos.comecaCom(token.minusculo(), "bearer ")) { token = token.subtexto(7, token.tamanho()).aparar() }
-    var resultado = jwt.decodificar(token, aplicacao.chaveSecreta)
+    var resultado = jwt.decodificarToken(token, aplicacao.chaveSecreta)
     se (resultado["valido"]) {
         requisicao.usuario = resultado["conteudo"]
         requisicao.autenticado = verdadeiro
@@ -186,7 +186,7 @@ funcao emitirToken(aplicacao, requisicao) {
     para cada usuario em aplicacao.usuarios {
         se (jsonLiquido.ehDicionario(usuario) e usuario.contem("email") e usuario.contem("senha") e usuario["email"] == corpo["email"] e usuario["senha"] == corpo["senha"]) {
             var conteudoToken = { "id": usuario["id"], "iat": jwt.agoraEmSegundos() }
-            var token = jwt.codificar(conteudoToken, aplicacao.chaveSecreta)
+            var token = jwt.codificarToken(conteudoToken, aplicacao.chaveSecreta)
             var dadosToken = { "token": token }
             retorna respostaJson(200, dadosToken)
         }
@@ -384,7 +384,7 @@ funcao resolverEExecutar(aplicacao, requisicao) {
 funcao processarRequisicao(aplicacao, dados) {
     var configuracaoLiquido = aplicacao.configuracao["liquido"]
     var configuracaoRoteador = configuracaoLiquido["roteador"]
-    var requisicao: qualquer = montarRequisicao(aplicacao, dados)
+    var requisicao = montarRequisicao(aplicacao, dados)
     var caminho = requisicao.caminho
     var metodo = requisicao.metodo
 
@@ -647,7 +647,7 @@ classe Aplicacao {
             }
             var textoUsuarios = arquivos.lerTexto(arquivos.juntarCaminhos(diretorioBase, "usuarios.json"))
             se (textoUsuarios != nulo) {
-                var usuariosLidos = jsonLiquido.analisar(textoUsuarios)
+                var usuariosLidos = jsonLiquido.analisarJson(textoUsuarios)
                 se (usuariosLidos["erro"] == "" e jsonLiquido.ehVetor(usuariosLidos["resultado"])) {
                     isto.usuarios = usuariosLidos["resultado"]
                 } senao {
@@ -663,8 +663,8 @@ classe Aplicacao {
     }
 
     adicionarRota(nomeMetodoRota, caminho, funcoes, arquivo) {
-        var metodo = roteamento.metodoDeRegistro(nomeMetodoRota)
-        se (metodo == nulo) {
+        var metodo: texto = roteamento.metodoDeRegistro(nomeMetodoRota)
+        se (metodo == "") {
             escreva("[Liquido] Método de rota '" + nomeMetodoRota + "' não suportado.")
             retorna falso
         }
@@ -685,9 +685,9 @@ classe Aplicacao {
     // Registra a documentação OpenAPI de uma rota. `textoJson` tem a forma
     // { "documentacao": {..}, "respostas": [{..}] }, montada pelo gerador a partir dos decoradores.
     documentarRota(nomeMetodoRota, caminho, textoJson) {
-        var metodo = roteamento.metodoDeRegistro(nomeMetodoRota)
-        se (metodo == nulo) { retorna falso }
-        var analisado = jsonLiquido.analisar(textoJson)
+        var metodo: texto = roteamento.metodoDeRegistro(nomeMetodoRota)
+        se (metodo == "") { retorna falso }
+        var analisado = jsonLiquido.analisarJson(textoJson)
         se (analisado["erro"] != "") {
             escreva("[Liquido] Documentação inválida para " + metodo + " " + caminho + ": " + analisado["erro"])
             retorna falso

@@ -1,6 +1,6 @@
 importar { grupo, teste, afirmar } de "testes"
 
-var delprops = importar("../fontes/configuracao/delprops.delegua")
+var delprops = importar("../fontes/configuracao/leitor_delprops.delegua")
 var centro = importar("../fontes/configuracao/centro_configuracoes.delegua")
 
 grupo("DelProps", funcao() {
@@ -16,6 +16,20 @@ grupo("DelProps", funcao() {
         afirmar.igual(2, entradas[3]["dado"].tamanho())
         afirmar.igual("App // com barras", entradas[4]["dado"])
         afirmar.igual("roteador", entradas[1]["caminho"][1])
+    })
+
+    teste("aceita falso e nulo", funcao() {
+        var resultado = delprops.analisar("liquido.roteador.cors = falso\nliquido.autenticacao.tecnologia = nulo")
+        afirmar.igual(0, resultado["erros"].tamanho())
+        afirmar.igual(2, resultado["entradas"].tamanho())
+        afirmar.falso(resultado["entradas"][0]["dado"])
+        afirmar.igual(nulo, resultado["entradas"][1]["dado"])
+    })
+
+    teste("recusa chaves duplicadas", funcao() {
+        var resultado = delprops.analisar("liquido.arquetipo = 'mvc'\r\nliquido.arquetipo = 'rest'")
+        afirmar.igual(1, resultado["erros"].tamanho())
+        afirmar.igual(1, resultado["entradas"].tamanho())
     })
 
     teste("informa linhas inválidas", funcao() {

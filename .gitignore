@@ -9,6 +9,7 @@ cobertura/
 coverage/
 
 CLAUDE.md
+planos/
 
 # Gerados nos projetos de exemplo dos testes.
 testes/exemplos/*/publico/css/principal.css

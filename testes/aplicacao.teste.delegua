@@ -194,7 +194,7 @@ grupo("Aplicação: estáticos, CORS e documentação", funcao() {
         aplicacao.documentarRota("rotaGet", "/api/clientes/:id", "{\"documentacao\": {\"sumario\": \"Obtém cliente\", \"etiquetas\": [\"clientes\"]}, \"respostas\": [{\"codigo\": 200, \"descricao\": \"Encontrado\", \"formatos\": [\"text/plain\"]}]}")
         var respostaHttp = aplicacao.processar(requisicaoHttp("GET", "/docs/openapi.json", {}, ""))
         afirmar.igual(200, respostaHttp["status"])
-        var documento = jsonLiquido.analisar(respostaHttp["corpo"])["resultado"]
+        var documento = jsonLiquido.analisarJson(respostaHttp["corpo"])["resultado"]
         afirmar.igual("3.0.0", documento["openapi"])
         afirmar.igual("Aplicação de teste", documento["info"]["title"])
         var operacao = documento["paths"]["/api/clientes/{id}"]["get"]
@@ -209,12 +209,12 @@ grupo("Aplicação: estáticos, CORS e documentação", funcao() {
 grupo("Aplicação: autenticação JWT", funcao() {
     teste("JWT compatível com o exemplo da RFC/jwt.io", funcao() {
         var conteudo = { "sub": "1234567890", "name": "John Doe", "iat": 1516239022 }
-        var token = jwt.codificar(conteudo, "your-256-bit-secret")
+        var token = jwt.codificarToken(conteudo, "your-256-bit-secret")
         afirmar.igual("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", token)
-        afirmar.verdadeiro(jwt.decodificar(token, "your-256-bit-secret")["valido"])
-        afirmar.falso(jwt.decodificar(token, "outra-chave")["valido"])
+        afirmar.verdadeiro(jwt.decodificarToken(token, "your-256-bit-secret")["valido"])
+        afirmar.falso(jwt.decodificarToken(token, "outra-chave")["valido"])
         var expirado = { "exp": 1 }
-        afirmar.falso(jwt.decodificar(jwt.codificar(expirado, "k"), "k")["valido"])
+        afirmar.falso(jwt.decodificarToken(jwt.codificarToken(expirado, "k"), "k")["valido"])
     })
 
     teste("/token emite token e rotas reconhecem o usuário", funcao() {
@@ -223,7 +223,7 @@ grupo("Aplicação: autenticação JWT", funcao() {
         afirmar.igual(401, recusado["status"])
         var emitido = aplicacao.processar(requisicaoHttp("POST", "/token", cabecalhos, "{\"email\": \"ana@exemplo.com\", \"senha\": \"senha-ana\"}"))
         afirmar.igual(200, emitido["status"])
-        var token = jsonLiquido.analisar(emitido["corpo"])["resultado"]["token"]
+        var token = jsonLiquido.analisarJson(emitido["corpo"])["resultado"]["token"]
 
         var semToken = aplicacao.processar(requisicaoHttp("DELETE", "/protegida", {}, ""))
         afirmar.igual(401, semToken["status"])

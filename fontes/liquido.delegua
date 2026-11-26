@@ -25,7 +25,7 @@ funcao simularRequisicoes(aplicacao, caminhoArquivo) {
         escreva("[Liquido] Não foi possível ler " + caminhoArquivo + ".")
         retorna falso
     }
-    var analisado = jsonLiquido.analisar(conteudo)
+    var analisado = jsonLiquido.analisarJson(conteudo)
     se (analisado["erro"] != "" ou nao jsonLiquido.ehVetor(analisado["resultado"])) {
         escreva("[Liquido] Arquivo de simulação inválido: esperado um vetor de requisições.")
         retorna falso
@@ -77,7 +77,7 @@ funcao iniciarAplicacao(aplicacao) {
 
     var liquido = aplicacao.configuracao["liquido"]
     se (liquido["arquetipo"] != "rest") {
-        var resultado = estilos.escreverEstilos(aplicacao.diretorioBase, liquido["estilos"]["diretorioBase"])
+        var resultado = estilos.gerarEstilosCss(aplicacao.diretorioBase, liquido["estilos"]["diretorioBase"])
         para cada erro em resultado["erros"] { escreva("[Liquido] " + erro) }
         para cada escrito em resultado["escritos"] { escreva("Salvo: " + escrito) }
     }
@@ -97,18 +97,18 @@ funcao gerarAplicacao(diretorioBase, linguagem, importacaoLiquido) {
 
 // Converte `estilos/*.foles` em CSS. Devolve a quantidade de arquivos escritos.
 funcao escreverEstilos(diretorioBase, diretorioDestino) {
-    var resultado = estilos.escreverEstilos(diretorioBase, diretorioDestino)
+    var resultado = estilos.gerarEstilosCss(diretorioBase, diretorioDestino)
     para cada erro em resultado["erros"] { escreva("[Liquido] " + erro) }
     retorna resultado["escritos"].tamanho()
 }
 
 // Utilidades expostas às rotas.
 funcao codificarJwt(conteudo, chaveSecreta) {
-    retorna jwtLiquido.codificar(conteudo, chaveSecreta)
+    retorna jwtLiquido.codificarToken(conteudo, chaveSecreta)
 }
 
 funcao decodificarJwt(token, chaveSecreta) {
-    retorna jwtLiquido.decodificar(token, chaveSecreta)
+    retorna jwtLiquido.decodificarToken(token, chaveSecreta)
 }
 
 funcao paraJson(valor) {
@@ -116,5 +116,5 @@ funcao paraJson(valor) {
 }
 
 funcao deJson(textoJson) {
-    retorna jsonLiquido.analisar(textoJson)
+    retorna jsonLiquido.analisarJson(textoJson)
 }

@@ -2,7 +2,7 @@
 
 Reimplementação do [Líquido](https://github.com/DesignLiquido/liquido) — conjunto de ferramentas para aplicações para a internet 100% em português — escrita em Delégua e distribuída como pacote Pacoteca (`liquido`).
 
-O Líquido original roda sobre Express, Handlebars e xml2js. Esta versão não depende de bibliotecas de Node.js: o servidor HTTP é escrito sobre o módulo `rede` (soquetes TCP), e as visões usam os pacotes Pacoteca [`lmht`](../lmht-delegua) e [`foles`](../foles-delegua).
+O Líquido original roda sobre Express, Handlebars e xml2js. Esta versão não depende de bibliotecas de Node.js: o servidor HTTP é escrito sobre o módulo `rede` (soquetes TCP), e o pacote agrega outros projetos escritos em Delégua pela Pacoteca: [`delegua`](../delegua-delegua), [`delprops`](../delprops-delegua), [`foles`](../foles-delegua) e [`lmht`](../lmht-delegua).
 
 ## O que funciona
 
@@ -32,7 +32,7 @@ liquido servir                             # http://localhost:3000
 
 Outros comandos: `gerar-aplicacao`, `simular requisicoes.json` (atende requisições descritas em JSON sem abrir porta), `documentar [--saida openapi.json]`, `estilos`, `gerar rota clientes/[id] --metodos get,post`, `gerar visao clientes/[id]`.
 
-`bin/liquido` e `bin/liquido.cmd` chamam `fontes/ilc.delegua`. O interpretador usado é o da variável `LIQUIDO_DELEGUA` (para a ILC) e `LIQUIDO_INTERPRETADOR` (para executar o programa gerado; um caminho `.js` é executado com `node`); o padrão é `delegua`.
+`bin/liquido` e `bin/liquido.cmd` chamam `fontes/ilc.delegua`. O interpretador usado é o da variável `LIQUIDO_DELEGUA` (para a ILC) e `LIQUIDO_INTERPRETADOR` (para executar o programa gerado; um caminho `.js` é executado com `node`). Sem elas, o Líquido usa o `deldel` (o interpretador de Delégua escrito em Delégua, do [delegua-delegua](../delegua-delegua)) se ele estiver no `PATH`, e senão o `delegua`. Com o `deldel`, nem a ILC nem a aplicação dependem de Node.js.
 
 ## Ainda não portado
 
@@ -40,6 +40,8 @@ Outros comandos: `gerar-aplicacao`, `simular requisicoes.json` (atende requisiç
 - Banco de dados LinConEs (`liquido.dados`, `liquido banco iniciar`): falta um pacote LinConEs para Delégua;
 - Recarga automática ao alterar arquivos;
 - Realizações `llvm`/`cgd`: o código usa apenas módulos com a mesma interface nas duas realizações, mas `rede.escreverArquivo` (arquivos estáticos binários) ainda só existe no delegua-node.
+
+O plano de modularização e compilação com o delegua-llvm, com o estado de cada fase, está em [planos/modularizacao.md](planos/modularizacao.md).
 
 ## Requisitos de execução (realização node)
 
@@ -55,4 +57,4 @@ Este pacote depende de correções feitas nesta mesma leva de trabalho em outros
 node D:\Delegua\delegua-node\dist\execucao.js testar
 ```
 
-Para o desenvolvimento local, `pacotes/node/lmht` e `pacotes/node/foles` são junções para `lmht-delegua` e `foles-delegua`.
+Para o desenvolvimento local, os diretórios em `pacotes/node/` e `pacotes/llvm/` podem usar junções para os repositórios irmãos (`delegua-delegua`, `delprops-delegua`, `foles-delegua`, `lmht-delegua`), ou ser instalados pelo `pacote` (que registra as versões travadas em `pacoteca.trava`).

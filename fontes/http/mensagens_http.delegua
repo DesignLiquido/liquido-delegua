@@ -1,78 +1,87 @@
 // Análise de requisições e montagem de respostas HTTP/1.1 em texto.
 importar tudo como criptografia de "criptografia"
-importar tudo como textos de "../utilidades/texto.delegua"
+importar { comecaCom, substituirTodos, terminaCom } de "../utilidades/texto.delegua"
 
-var textosStatus = {
-    "100": "Continue",
-    "101": "Switching Protocols",
-    "200": "OK",
-    "201": "Created",
-    "202": "Accepted",
-    "204": "No Content",
-    "206": "Partial Content",
-    "301": "Moved Permanently",
-    "302": "Found",
-    "303": "See Other",
-    "304": "Not Modified",
-    "307": "Temporary Redirect",
-    "308": "Permanent Redirect",
-    "400": "Bad Request",
-    "401": "Unauthorized",
-    "403": "Forbidden",
-    "404": "Not Found",
-    "405": "Method Not Allowed",
-    "406": "Not Acceptable",
-    "408": "Request Timeout",
-    "409": "Conflict",
-    "410": "Gone",
-    "413": "Payload Too Large",
-    "415": "Unsupported Media Type",
-    "422": "Unprocessable Entity",
-    "429": "Too Many Requests",
-    "500": "Internal Server Error",
-    "501": "Not Implemented",
-    "502": "Bad Gateway",
-    "503": "Service Unavailable"
+funcao obterTextosStatus(): dicionário {
+    retorna {
+        "100": "Continue",
+        "101": "Switching Protocols",
+        "200": "OK",
+        "201": "Created",
+        "202": "Accepted",
+        "204": "No Content",
+        "206": "Partial Content",
+        "301": "Moved Permanently",
+        "302": "Found",
+        "303": "See Other",
+        "304": "Not Modified",
+        "307": "Temporary Redirect",
+        "308": "Permanent Redirect",
+        "400": "Bad Request",
+        "401": "Unauthorized",
+        "403": "Forbidden",
+        "404": "Not Found",
+        "405": "Method Not Allowed",
+        "406": "Not Acceptable",
+        "408": "Request Timeout",
+        "409": "Conflict",
+        "410": "Gone",
+        "413": "Payload Too Large",
+        "415": "Unsupported Media Type",
+        "422": "Unprocessable Entity",
+        "429": "Too Many Requests",
+        "500": "Internal Server Error",
+        "501": "Not Implemented",
+        "502": "Bad Gateway",
+        "503": "Service Unavailable"
+    }
 }
 
-funcao textoStatus(codigo) {
-    var chave = texto(codigo)
-    se (textosStatus.contem(chave)) { retorna textosStatus[chave] }
+funcao textoStatus(codigo: inteiro): texto {
+    var chave: texto = texto(codigo)
+    var textosStatus: dicionário = obterTextosStatus()
+    se (textosStatus.contem(chave)) {
+        var descricao: texto = textosStatus[chave]
+        retorna descricao
+    }
     retorna "Status " + chave
 }
 
-var metodosConhecidos = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "COPY", "LOCK", "UNLOCK", "PURGE", "PROPFIND", "LINK", "UNLINK", "VIEW", "TRACE", "CONNECT"]
+funcao obterMetodosConhecidos(): texto[] {
+    retorna ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "COPY", "LOCK", "UNLOCK", "PURGE", "PROPFIND", "LINK", "UNLINK", "VIEW", "TRACE", "CONNECT"]
+}
 
 // Analisa a linha de requisição e os cabeçalhos (texto até "\r\n\r\n", inclusive ou não).
 // Devolve { "erro": "", "metodo", "alvo", "versao", "cabecalhos" }. Nomes de cabeçalhos ficam em minúsculas.
-funcao analisarCabecalhoRequisicao(textoCabecalho) {
-    var normalizado = textos.substituirTodos("" + textoCabecalho, "\r\n", "\n")
-    var linhas = normalizado.dividir("\n")
-    var cabecalhos = {}
+funcao analisarCabecalhoRequisicao(textoCabecalho: texto): dicionário {
+    var normalizado: texto = substituirTodos("" + textoCabecalho, "\r\n", "\n")
+    var linhas: texto[] = normalizado.dividir("\n")
+    var cabecalhos: dicionário = {}
     se (linhas.tamanho() == 0 ou linhas[0].aparar() == "") {
         retorna { "erro": "Requisição vazia", "metodo": "", "alvo": "", "versao": "", "cabecalhos": cabecalhos }
     }
 
-    var partes = linhas[0].aparar().dividir(" ")
+    var partes: texto[] = linhas[0].aparar().dividir(" ")
     se (partes.tamanho() != 3) {
         retorna { "erro": "Linha de requisição inválida", "metodo": "", "alvo": "", "versao": "", "cabecalhos": cabecalhos }
     }
-    var metodo = partes[0].maiusculo()
-    var versao = partes[2].maiusculo()
-    se (nao textos.comecaCom(versao, "HTTP/")) {
+    var metodo: texto = partes[0].maiusculo()
+    var versao: texto = partes[2].maiusculo()
+    se (nao comecaCom(versao, "HTTP/")) {
         retorna { "erro": "Versão HTTP inválida", "metodo": metodo, "alvo": partes[1], "versao": versao, "cabecalhos": cabecalhos }
     }
 
-    para (var i = 1; i < linhas.tamanho(); i = i + 1) {
-        var linha = linhas[i]
+    para (var i: inteiro = 1; i < linhas.tamanho(); i = i + 1) {
+        var linha: texto = linhas[i]
         se (linha.aparar() == "") { continua }
-        var separador = linha.encontrar(":")
+        var separador: inteiro = linha.encontrar(":")
         se (separador <= 0) { continua }
-        var nome = linha.subtexto(0, separador).aparar().minusculo()
-        var valorCabecalho = linha.subtexto(separador + 1, linha.tamanho()).aparar()
+        var nome: texto = linha.subtexto(0, separador).aparar().minusculo()
+        var valorCabecalho: texto = linha.subtexto(separador + 1, linha.tamanho()).aparar()
         se (cabecalhos.contem(nome)) {
             // Cabeçalhos repetidos são combinados, como manda a RFC 9110 (exceto set-cookie).
-            cabecalhos[nome] = cabecalhos[nome] + ", " + valorCabecalho
+            var anterior: texto = cabecalhos[nome]
+            cabecalhos[nome] = anterior + ", " + valorCabecalho
         } senao {
             cabecalhos[nome] = valorCabecalho
         }
@@ -81,34 +90,36 @@ funcao analisarCabecalhoRequisicao(textoCabecalho) {
     retorna { "erro": "", "metodo": metodo, "alvo": partes[1], "versao": versao, "cabecalhos": cabecalhos }
 }
 
-funcao ehMetodoConhecido(metodo) {
-    retorna metodosConhecidos.inclui(metodo)
+funcao ehMetodoConhecido(metodo: texto): lógico {
+    se (obterMetodosConhecidos().inclui(metodo)) { retorna verdadeiro }
+    retorna falso
 }
 
 // Quantidade de bytes do texto em UTF-8. Delégua não expõe códigos de caracteres,
 // então o tamanho é obtido a partir da codificação Base64 (que codifica os bytes UTF-8).
-funcao tamanhoEmBytes(conteudo) {
-    var textoConteudo = "" + conteudo
+funcao tamanhoEmBytes(conteudo: texto): inteiro {
+    var textoConteudo: texto = "" + conteudo
     se (textoConteudo == "") { retorna 0 }
-    var base64 = criptografia.codificarBase64(textoConteudo)
-    var preenchimento = 0
-    se (textos.terminaCom(base64, "==")) { preenchimento = 2 }
-    senao se (textos.terminaCom(base64, "=")) { preenchimento = 1 }
+    var base64: texto = criptografia.codificarBase64(textoConteudo)
+    var preenchimento: inteiro = 0
+    se (terminaCom(base64, "==")) { preenchimento = 2 }
+    senao se (terminaCom(base64, "=")) { preenchimento = 1 }
     retorna inteiro(base64.tamanho() / 4) * 3 - preenchimento
 }
 
 // Monta a mensagem de resposta.
 // `cabecalhos` é um vetor de pares [nome, valor], para permitir nomes repetidos (Set-Cookie).
-funcao montarResposta(codigoStatus, cabecalhos, corpo, incluirCorpo) {
-    var mensagem = "HTTP/1.1 " + texto(codigoStatus) + " " + textoStatus(codigoStatus) + "\r\n"
-    var temTamanho = falso
-    para cada par em cabecalhos {
+funcao montarResposta(codigoStatus: inteiro, cabecalhos: vetor, corpo: texto, incluirCorpo: lógico): texto {
+    var mensagem: texto = "HTTP/1.1 " + texto(codigoStatus) + " " + textoStatus(codigoStatus) + "\r\n"
+    var temTamanho: lógico = falso
+    para (var i: inteiro = 0; i < cabecalhos.tamanho(); i = i + 1) {
+        var par: texto[] = cabecalhos[i]
         se (par[0].minusculo() == "content-length") { temTamanho = verdadeiro }
         mensagem = mensagem + par[0] + ": " + par[1] + "\r\n"
     }
-    var textoCorpo = ""
+    var textoCorpo: texto = ""
     se (corpo != nulo) { textoCorpo = "" + corpo }
-    var semCorpo = codigoStatus == 204 ou codigoStatus == 304 ou (codigoStatus >= 100 e codigoStatus < 200)
+    var semCorpo: lógico = codigoStatus == 204 ou codigoStatus == 304 ou (codigoStatus >= 100 e codigoStatus < 200)
     se (nao temTamanho e nao semCorpo) {
         mensagem = mensagem + "Content-Length: " + texto(tamanhoEmBytes(textoCorpo)) + "\r\n"
     }
@@ -121,9 +132,10 @@ funcao montarResposta(codigoStatus, cabecalhos, corpo, incluirCorpo) {
 
 // Linha de status e cabeçalhos, sem corpo e sem Content-Length (para corpos enviados à parte,
 // como arquivos binários; a conexão é encerrada ao final).
-funcao montarInicioResposta(codigoStatus, cabecalhos) {
-    var mensagem = "HTTP/1.1 " + texto(codigoStatus) + " " + textoStatus(codigoStatus) + "\r\n"
-    para cada par em cabecalhos {
+funcao montarInicioResposta(codigoStatus: inteiro, cabecalhos: vetor): texto {
+    var mensagem: texto = "HTTP/1.1 " + texto(codigoStatus) + " " + textoStatus(codigoStatus) + "\r\n"
+    para (var i: inteiro = 0; i < cabecalhos.tamanho(); i = i + 1) {
+        var par: texto[] = cabecalhos[i]
         mensagem = mensagem + par[0] + ": " + par[1] + "\r\n"
     }
     retorna mensagem + "Connection: close\r\n\r\n"

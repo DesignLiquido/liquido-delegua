@@ -3,8 +3,8 @@
 // `mensagem`, quando não vazia, é a explicação amigável em português; a mensagem original
 // é preservada como detalhe técnico. LIQ99999 é o código de contingência.
 
-funcao listaDeErros() {
-    var lista = [
+funcao listaDeErros(): vetor {
+    var lista: vetor = [
         { "codigo": "LIQ00001", "palavraChave": "não encontrado", "mensagem": "" },
         { "codigo": "LIQ00002", "palavraChave": "não foi definida", "mensagem": "" },
         { "codigo": "LIQ00003", "palavraChave": "inesperado", "mensagem": "" },
@@ -21,26 +21,33 @@ funcao listaDeErros() {
 }
 
 // Devolve { "codigo", "mensagemAmigavel" } para a mensagem de erro.
-funcao classificar(mensagemErro) {
-    var textoErro = ("" + mensagemErro).minusculo()
-    para cada item em listaDeErros() {
-        se (textoErro.inclui(item["palavraChave"])) {
-            retorna { "codigo": item["codigo"], "mensagemAmigavel": item["mensagem"] }
+funcao classificar(mensagemErro: texto): dicionário {
+    var textoErro: texto = ("" + mensagemErro).minusculo()
+    var lista: vetor = listaDeErros()
+    para (var i: inteiro = 0; i < lista.tamanho(); i = i + 1) {
+        var item: dicionário = lista[i]
+        var palavra: texto = item["palavraChave"]
+        se (textoErro.inclui(palavra)) {
+            var codigo: texto = item["codigo"]
+            var msg: texto = item["mensagem"]
+            retorna { "codigo": codigo, "mensagemAmigavel": msg }
         }
     }
     retorna { "codigo": "LIQ99999", "mensagemAmigavel": "" }
 }
 
 // Texto da linha de erro mostrada no console e na resposta.
-funcao descrever(mensagemErro, arquivoFonte) {
+funcao descrever(mensagemErro: texto, arquivoFonte: texto): texto {
     var classificacao: dicionário = classificar(mensagemErro)
-    var localizacao = ""
+    var localizacao: texto = ""
     se (arquivoFonte != nulo e arquivoFonte != "") { localizacao = " [Arquivo: " + arquivoFonte + "]" }
-    var principal = mensagemErro
-    var detalhe = ""
-    se (classificacao["mensagemAmigavel"] != "") {
-        principal = classificacao["mensagemAmigavel"]
+    var principal: texto = mensagemErro
+    var detalhe: texto = ""
+    var amigavel: texto = classificacao["mensagemAmigavel"]
+    se (amigavel != "") {
+        principal = amigavel
         detalhe = " (detalhe técnico: " + mensagemErro + ")"
     }
-    retorna classificacao["codigo"] + localizacao + ": " + principal + detalhe
+    var codigo: texto = classificacao["codigo"]
+    retorna codigo + localizacao + ": " + principal + detalhe
 }

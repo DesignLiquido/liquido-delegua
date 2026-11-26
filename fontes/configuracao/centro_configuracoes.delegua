@@ -1,21 +1,22 @@
 // Centro de configurações: valores padrão do Líquido e aplicação das entradas de `configuracao.delprops`.
 importar tudo como arquivos de "arquivos"
 importar tudo como processo de "processo"
-importar tudo como delprops de "./delprops.delegua"
-importar tudo como textos de "../utilidades/texto.delegua"
+importar { analisar } de "./leitor_delprops.delegua"
+importar { ehDicionario } de "../utilidades/json.delegua"
+importar { comecaCom, removerAcentos, substituirTodos } de "../utilidades/texto.delegua"
 
-funcao configuracaoPadrao() {
-    var licenca = { "nome": nulo, "url": nulo }
-    var aplicacao = { "nome": "", "versao": "", "descricao": "", "licenca": licenca }
-    var autenticacao = { "tecnologia": nulo }
-    var lincones = {
+funcao configuracaoPadrao(): dicionário {
+    var licenca: dicionário = { "nome": nulo, "url": nulo }
+    var aplicacao: dicionário = { "nome": "", "versao": "", "descricao": "", "licenca": licenca }
+    var autenticacao: dicionário = { "tecnologia": nulo }
+    var lincones: dicionário = {
         "tecnologia": nulo,
         "caminho": nulo,
         "autoInicializar": falso,
         "arquivoInicializacao": "inicializacao.lincones"
     }
-    var dados = { "motor": "lincones", "lincones": lincones }
-    var roteador = {
+    var dados: dicionário = { "motor": "lincones", "lincones": lincones }
+    var roteador: dicionário = {
         "diretorioEstatico": "publico",
         "cors": falso,
         "origensCors": "*",
@@ -29,8 +30,8 @@ funcao configuracaoPadrao() {
         "endereco": "0.0.0.0",
         "tempoLimite": 10000
     }
-    var estilos = { "diretorioBase": "publico/css" }
-    var liquido = {
+    var estilos: dicionário = { "diretorioBase": "publico/css" }
+    var liquido: dicionário = {
         "arquetipo": "rest",
         "linguagem": "delegua",
         "verboso": falso,
@@ -43,23 +44,18 @@ funcao configuracaoPadrao() {
     retorna { "liquido": liquido }
 }
 
-funcao ehDicionario(valor) {
-    var tipoValor = tipo de valor
-    retorna tipoValor == "dicionário"
-}
-
 // Aplica uma entrada { "caminho": [..], "dado": .. } na configuração. Devolve uma mensagem de erro ou "".
-funcao aplicarEntrada(configuracao, entrada) {
-    var caminho = entrada["caminho"]
-    var atual = configuracao
-    para (var i = 0; i < caminho.tamanho() - 1; i = i + 1) {
-        var parte = caminho[i]
+funcao aplicarEntrada(configuracao: dicionário, entrada: dicionário): texto {
+    var caminho: texto[] = entrada["caminho"]
+    var atual: dicionário = configuracao
+    para (var i: inteiro = 0; i < caminho.tamanho() - 1; i = i + 1) {
+        var parte: texto = caminho[i]
         se (nao atual.contem(parte) ou nao ehDicionario(atual[parte])) {
             retorna "Propriedade " + caminho.fatiar(0, i + 1).juntar(".") + " não existe."
         }
         atual = atual[parte]
     }
-    var ultima = caminho[caminho.tamanho() - 1]
+    var ultima: texto = caminho[caminho.tamanho() - 1]
     se (nao atual.contem(ultima)) {
         retorna "Propriedade " + caminho.juntar(".") + " não existe."
     }
@@ -68,26 +64,30 @@ funcao aplicarEntrada(configuracao, entrada) {
     }
     var dado = entrada["dado"]
     se (ultima == "linguagem" e dado != nulo) {
-        dado = textos.removerAcentos(dado).minusculo()
+        dado = removerAcentos("" + dado).minusculo()
     }
     atual[ultima] = dado
     retorna ""
 }
 
 // Monta a configuração a partir do texto DelProps. Devolve { "configuracao": .., "erros": [..] }.
-funcao configurarPorTexto(textoDelprops) {
+funcao configurarPorTexto(textoDelprops: texto): dicionário {
     var configuracao: dicionário = configuracaoPadrao()
-    var resultado = delprops.analisar(textoDelprops)
-    var erros = resultado["erros"]
-    para cada entrada em resultado["entradas"] {
-        var erro = aplicarEntrada(configuracao, entrada)
+    var resultado: dicionário = analisar(textoDelprops)
+    var erros: texto[] = resultado["erros"]
+    var entradas: vetor = resultado["entradas"]
+    para (var i: inteiro = 0; i < entradas.tamanho(); i = i + 1) {
+        var entrada: dicionário = entradas[i]
+        var erro: texto = aplicarEntrada(configuracao, entrada)
         se (erro != "") { erros.adicionar("[Linha " + texto(entrada["linha"]) + "] " + erro) }
     }
-    var lincones = configuracao["liquido"]["dados"]["lincones"]
-    var tecnologiaAusente = lincones["tecnologia"] == nulo ou lincones["tecnologia"] == ""
-    var caminhoAusente = lincones["caminho"] == nulo ou lincones["caminho"] == ""
+    var liquidoCfg: dicionário = configuracao["liquido"]
+    var dadosCfg: dicionário = liquidoCfg["dados"]
+    var lincones: dicionário = dadosCfg["lincones"]
+    var tecnologiaAusente: lógico = lincones["tecnologia"] == nulo ou lincones["tecnologia"] == ""
+    var caminhoAusente: lógico = lincones["caminho"] == nulo ou lincones["caminho"] == ""
     se (tecnologiaAusente != caminhoAusente) {
-        var chaveAusente = "liquido.dados.lincones.caminho"
+        var chaveAusente: texto = "liquido.dados.lincones.caminho"
         se (tecnologiaAusente) { chaveAusente = "liquido.dados.lincones.tecnologia" }
         erros.adicionar("Configuração incompleta: " + chaveAusente + " não informado. Defina ambas as propriedades \"liquido.dados.lincones.tecnologia\" e \"liquido.dados.lincones.caminho\", ou remova ambas se não for usar banco de dados.")
     }
@@ -95,34 +95,35 @@ funcao configurarPorTexto(textoDelprops) {
 }
 
 // Lê `configuracao.delprops` do diretório base. Sem arquivo, usa os valores padrão.
-funcao carregar(diretorioBase) {
-    var caminho = arquivos.juntarCaminhos(diretorioBase, "configuracao.delprops")
-    var conteudo = arquivos.lerTexto(caminho)
+funcao carregar(diretorioBase: texto): dicionário {
+    var caminho: texto = arquivos.juntarCaminhos(diretorioBase, "configuracao.delprops")
+    var conteudo: texto = arquivos.lerTexto(caminho)
     se (conteudo == nulo) {
-        var padraoConfiguracao = configuracaoPadrao()
-        var semErros = []
+        var padraoConfiguracao: dicionário = configuracaoPadrao()
+        var semErros: texto[] = []
         retorna { "configuracao": padraoConfiguracao, "erros": semErros, "encontrado": falso }
     }
-    var resultado = configurarPorTexto(conteudo)
+    var resultado: dicionário = configurarPorTexto(conteudo)
     retorna { "configuracao": resultado["configuracao"], "erros": resultado["erros"], "encontrado": verdadeiro }
 }
 
 // Variável de ambiente, ou entrada `NOME=valor` do arquivo `.ambiente` do diretório base.
 // 'verdadeiro'/'falso' viram lógicos. Devolve nulo se não houver.
-funcao variavelAmbiente(diretorioBase, nome) {
+funcao variavelAmbiente(diretorioBase: texto, nome: texto): qualquer {
     var valorAmbiente = processo.variavelAmbiente(nome)
     se (valorAmbiente == nulo ou valorAmbiente == "") {
-        valorAmbiente = nulo
+        valorAmbiente = ""
         var conteudo = arquivos.lerTexto(arquivos.juntarCaminhos(diretorioBase, ".ambiente"))
         se (conteudo != nulo) {
-            para cada linha em textos.substituirTodos(conteudo, "\r\n", "\n").dividir("\n") {
-                se (textos.comecaCom(linha, nome + "=")) {
+            para cada linha em substituirTodos(conteudo, "\r\n", "\n").dividir("\n") {
+                se (comecaCom(linha, nome + "=")) {
                     valorAmbiente = linha.subtexto(nome.tamanho() + 1, linha.tamanho()).aparar()
                     sustar
                 }
             }
         }
     }
+    se (valorAmbiente == "") { retorna nulo }
     se (valorAmbiente == "verdadeiro" ou valorAmbiente == "Verdadeiro") { retorna verdadeiro }
     se (valorAmbiente == "falso" ou valorAmbiente == "Falso") { retorna falso }
     retorna valorAmbiente

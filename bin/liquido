@@ -2,4 +2,8 @@
 # Executa a interface por linha de comando do Líquido.
 # Uso: liquido <comando> [opções]
 DIRETORIO_LIQUIDO="$(cd "$(dirname "$0")/.." && pwd)"
-exec ${LIQUIDO_DELEGUA:-delegua} "$DIRETORIO_LIQUIDO/fontes/ilc.delegua" -- "$@"
+# Interpretador: LIQUIDO_DELEGUA; sem ela, o deldel (delegua-delegua) se estiver no PATH; senão, o delegua.
+if [ -z "$LIQUIDO_DELEGUA" ]; then
+    if command -v deldel >/dev/null 2>&1; then LIQUIDO_DELEGUA=deldel; else LIQUIDO_DELEGUA=delegua; fi
+fi
+exec "$LIQUIDO_DELEGUA" "$DIRETORIO_LIQUIDO/fontes/ilc.delegua" -- "$@"

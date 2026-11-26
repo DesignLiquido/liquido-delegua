@@ -1,47 +1,51 @@
 // Tipos de conteúdo por extensão de arquivo, para arquivos estáticos.
 
-var tiposPorExtensao = {
-    "html": "text/html; charset=utf-8",
-    "htm": "text/html; charset=utf-8",
-    "css": "text/css; charset=utf-8",
-    "js": "text/javascript; charset=utf-8",
-    "mjs": "text/javascript; charset=utf-8",
-    "json": "application/json; charset=utf-8",
-    "map": "application/json; charset=utf-8",
-    "txt": "text/plain; charset=utf-8",
-    "md": "text/markdown; charset=utf-8",
-    "csv": "text/csv; charset=utf-8",
-    "xml": "application/xml; charset=utf-8",
-    "svg": "image/svg+xml",
-    "png": "image/png",
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
-    "gif": "image/gif",
-    "webp": "image/webp",
-    "ico": "image/x-icon",
-    "avif": "image/avif",
-    "woff": "font/woff",
-    "woff2": "font/woff2",
-    "ttf": "font/ttf",
-    "otf": "font/otf",
-    "pdf": "application/pdf",
-    "zip": "application/zip",
-    "wasm": "application/wasm",
-    "mp3": "audio/mpeg",
-    "mp4": "video/mp4",
-    "webm": "video/webm",
-    "ogg": "audio/ogg",
-    "wav": "audio/wav"
+funcao obterTiposPorExtensao(): dicionário {
+    retorna {
+        "html": "text/html; charset=utf-8",
+        "htm": "text/html; charset=utf-8",
+        "css": "text/css; charset=utf-8",
+        "js": "text/javascript; charset=utf-8",
+        "mjs": "text/javascript; charset=utf-8",
+        "json": "application/json; charset=utf-8",
+        "map": "application/json; charset=utf-8",
+        "txt": "text/plain; charset=utf-8",
+        "md": "text/markdown; charset=utf-8",
+        "csv": "text/csv; charset=utf-8",
+        "xml": "application/xml; charset=utf-8",
+        "svg": "image/svg+xml",
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "gif": "image/gif",
+        "webp": "image/webp",
+        "ico": "image/x-icon",
+        "avif": "image/avif",
+        "woff": "font/woff",
+        "woff2": "font/woff2",
+        "ttf": "font/ttf",
+        "otf": "font/otf",
+        "pdf": "application/pdf",
+        "zip": "application/zip",
+        "wasm": "application/wasm",
+        "mp3": "audio/mpeg",
+        "mp4": "video/mp4",
+        "webm": "video/webm",
+        "ogg": "audio/ogg",
+        "wav": "audio/wav"
+    }
 }
 
 // Tipos cujo conteúdo é texto (UTF-8) e pode ser lido com `arquivos.lerTexto`.
-var tiposTexto = ["html", "htm", "css", "js", "mjs", "json", "map", "txt", "md", "csv", "xml", "svg"]
+funcao obterTiposTexto(): texto[] {
+    retorna ["html", "htm", "css", "js", "mjs", "json", "map", "txt", "md", "csv", "xml", "svg"]
+}
 
-funcao extensaoArquivo(caminho) {
-    var textoCaminho = "" + caminho
-    var posicao = -1
-    para (var i = 0; i < textoCaminho.tamanho(); i = i + 1) {
-        var c = textoCaminho[i]
+funcao extensaoArquivo(caminho: texto): texto {
+    var textoCaminho: texto = "" + caminho
+    var posicao: inteiro = -1
+    para (var i: inteiro = 0; i < textoCaminho.tamanho(); i = i + 1) {
+        var c: texto = textoCaminho[i]
         se (c == ".") { posicao = i }
         se (c == "/" ou c == "\\") { posicao = -1 }
     }
@@ -49,12 +53,17 @@ funcao extensaoArquivo(caminho) {
     retorna textoCaminho.subtexto(posicao + 1, textoCaminho.tamanho()).minusculo()
 }
 
-funcao tipoPorCaminho(caminho) {
-    var ext = extensaoArquivo(caminho)
-    se (tiposPorExtensao.contem(ext)) { retorna tiposPorExtensao[ext] }
+funcao tipoPorCaminho(caminho: texto): texto {
+    var ext: texto = extensaoArquivo(caminho)
+    var tipos: dicionário = obterTiposPorExtensao()
+    se (tipos.contem(ext)) {
+        var tipoEncontrado: texto = tipos[ext]
+        retorna tipoEncontrado
+    }
     retorna "application/octet-stream"
 }
 
-funcao ehTexto(caminho) {
-    retorna tiposTexto.inclui(extensaoArquivo(caminho))
+funcao ehTexto(caminho: texto): lógico {
+    se (obterTiposTexto().inclui(extensaoArquivo(caminho))) { retorna verdadeiro }
+    retorna falso
 }

@@ -1,19 +1,19 @@
 // Leitura do cabeçalho Cookie e montagem de Set-Cookie.
-importar tudo como url de "./url.delegua"
-importar tudo como textos de "../utilidades/texto.delegua"
+importar { codificar, decodificar } de "./url.delegua"
+importar { comecaCom, dividirPrimeira, terminaCom } de "../utilidades/texto.delegua"
 
-funcao analisarCookies(cabecalhoCookie) {
-    var resultado = {}
+funcao analisarCookies(cabecalhoCookie: texto): dicionário {
+    var resultado: dicionário = {}
     se (cabecalhoCookie == nulo ou cabecalhoCookie == "") { retorna resultado }
     para cada par em ("" + cabecalhoCookie).dividir(";") {
-        var partes = textos.dividirPrimeira(par.aparar(), "=")
+        var partes: texto[] = dividirPrimeira(par.aparar(), "=")
         se (partes.tamanho() < 2 ou partes[0] == "") { continua }
-        var valorCookie = partes[1].aparar()
-        se (textos.comecaCom(valorCookie, "\"") e textos.terminaCom(valorCookie, "\"") e valorCookie.tamanho() >= 2) {
+        var valorCookie: texto = partes[1].aparar()
+        se (comecaCom(valorCookie, "\"") e terminaCom(valorCookie, "\"") e valorCookie.tamanho() >= 2) {
             valorCookie = valorCookie.subtexto(1, valorCookie.tamanho() - 1)
         }
         se (nao resultado.contem(partes[0])) {
-            resultado[partes[0]] = url.decodificar(valorCookie)
+            resultado[partes[0]] = decodificar(valorCookie)
         }
     }
     retorna resultado
@@ -21,18 +21,33 @@ funcao analisarCookies(cabecalhoCookie) {
 
 // Opções aceitas (nomes em português): caminho, dominio, idadeMaxima (segundos), expira (texto HTTP-date),
 // seguro, somenteHttp, mesmoSitio ("Strict", "Lax", "None").
-funcao montarSetCookie(nome, valorCookie, opcoes) {
-    var partes = [nome + "=" + url.codificar(valorCookie)]
-    var caminho = "/"
-    se (opcoes != nulo e opcoes.contem("caminho")) { caminho = opcoes["caminho"] }
+funcao montarSetCookie(nome: texto, valorCookie: texto, opcoes: dicionário): texto {
+    var partes: texto[] = [nome + "=" + codificar(valorCookie)]
+    var caminho: texto = "/"
+    se (opcoes != nulo e opcoes.contem("caminho")) {
+        var caminhoOpcao: texto = opcoes["caminho"]
+        caminho = caminhoOpcao
+    }
     partes.adicionar("Path=" + caminho)
     se (opcoes != nulo) {
-        se (opcoes.contem("dominio")) { partes.adicionar("Domain=" + opcoes["dominio"]) }
-        se (opcoes.contem("idadeMaxima")) { partes.adicionar("Max-Age=" + texto(opcoes["idadeMaxima"])) }
-        se (opcoes.contem("expira")) { partes.adicionar("Expires=" + opcoes["expira"]) }
+        se (opcoes.contem("dominio")) {
+            var dominio: texto = opcoes["dominio"]
+            partes.adicionar("Domain=" + dominio)
+        }
+        se (opcoes.contem("idadeMaxima")) {
+            var idadeMaxima: inteiro = opcoes["idadeMaxima"]
+            partes.adicionar("Max-Age=" + texto(idadeMaxima))
+        }
+        se (opcoes.contem("expira")) {
+            var expira: texto = opcoes["expira"]
+            partes.adicionar("Expires=" + expira)
+        }
         se (opcoes.contem("somenteHttp") e opcoes["somenteHttp"]) { partes.adicionar("HttpOnly") }
         se (opcoes.contem("seguro") e opcoes["seguro"]) { partes.adicionar("Secure") }
-        se (opcoes.contem("mesmoSitio")) { partes.adicionar("SameSite=" + opcoes["mesmoSitio"]) }
+        se (opcoes.contem("mesmoSitio")) {
+            var mesmoSitio: texto = opcoes["mesmoSitio"]
+            partes.adicionar("SameSite=" + mesmoSitio)
+        }
     }
     retorna partes.juntar("; ")
 }

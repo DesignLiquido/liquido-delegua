@@ -1,0 +1,94 @@
+// Leitura de `configuracao.delprops` para o Líquido.
+// A sintaxe das linhas (`chave = valor`, comentários de linha inteira, chaves duplicadas) é
+// compreendida pelo pacote `delprops`; aqui ficam só a remoção de comentários no fim da linha
+// e a interpretação tipada dos valores: texto ('...' ou "..."), número, `verdadeiro`, `falso`,
+// `nulo` ou vetor ['a', 'b'].
+importar tudo como delprops de "delprops"
+importar { substituirTodos } de "../utilidades/texto.delegua"
+
+// Remove um comentário `//` que esteja fora de textos.
+funcao removerComentario(linha: texto): texto {
+    var aspas: texto = ""
+    para (var i: inteiro = 0; i < linha.tamanho(); i = i + 1) {
+        var c: texto = linha[i]
+        se (aspas != "") {
+            se (c == aspas) { aspas = "" }
+            continua
+        }
+        se (c == "'" ou c == "\"") {
+            aspas = c
+            continua
+        }
+        se (c == "/" e i + 1 < linha.tamanho() e linha[i + 1] == "/") {
+            retorna linha.subtexto(0, i)
+        }
+    }
+    retorna linha
+}
+
+// Interpreta o valor de uma propriedade. Devolve { "ok": lógico, "dado": ... }.
+funcao interpretarValor(textoValor: texto): dicionário {
+    var bruto: texto = textoValor.aparar()
+    se (bruto == "verdadeiro") { retorna { "ok": verdadeiro, "dado": verdadeiro } }
+    se (bruto == "falso") { retorna { "ok": verdadeiro, "dado": falso } }
+    se (bruto == "nulo") { retorna { "ok": verdadeiro, "dado": nulo } }
+    se (bruto.tamanho() >= 2) {
+        var primeiro: texto = bruto[0]
+        var ultimo: texto = bruto[bruto.tamanho() - 1]
+        se ((primeiro == "'" ou primeiro == "\"") e ultimo == primeiro) {
+            retorna { "ok": verdadeiro, "dado": bruto.subtexto(1, bruto.tamanho() - 1) }
+        }
+        se (primeiro == "[" e ultimo == "]") {
+            var itens: vetor = []
+            var interno: texto = bruto.subtexto(1, bruto.tamanho() - 1).aparar()
+            se (interno != "") {
+                // Laço por índice: `para cada` termina cedo com chamadas recursivas.
+                var partesVetor: texto[] = interno.dividir(",")
+                para (var i: inteiro = 0; i < partesVetor.tamanho(); i = i + 1) {
+                    var item: dicionário = interpretarValor(partesVetor[i])
+                    se (nao item["ok"]) { retorna { "ok": falso, "dado": nulo } }
+                    var dadoItem = item["dado"]
+                    itens.adicionar(dadoItem)
+                }
+            }
+            retorna { "ok": verdadeiro, "dado": itens }
+        }
+    }
+    var ehNumero: lógico = bruto != ""
+    para cada c em bruto {
+        se (nao "-0123456789.".inclui(c)) { ehNumero = falso }
+    }
+    se (ehNumero e bruto != "-" e bruto != ".") { retorna { "ok": verdadeiro, "dado": numero(bruto) } }
+    retorna { "ok": falso, "dado": nulo }
+}
+
+// Analisa o texto DelProps. Devolve { "entradas": [ { "caminho": [..], "dado": .., "linha": n } ], "erros": [..] }.
+funcao analisar(textoDelprops: texto): dicionário {
+    var entradas: vetor = []
+    var erros: texto[] = []
+    var compreendido = delprops.analisar(substituirTodos("" + textoDelprops, "\r\n", "\n"))
+    para (var i: inteiro = 0; i < compreendido.erros.tamanho(); i = i + 1) {
+        var erroCompreensao = compreendido.erros[i]
+        erros.adicionar("[Linha " + texto(erroCompreensao.linha) + "] " + erroCompreensao.mensagem)
+    }
+    para (var j: inteiro = 0; j < compreendido.propriedades.tamanho(); j = j + 1) {
+        var propriedade = compreendido.propriedades[j]
+        var nome: texto = propriedade.chave
+        var linhaPropriedade: inteiro = propriedade.linha
+        var resultadoValor: dicionário = interpretarValor(removerComentario(propriedade.valor))
+        se (nao resultadoValor["ok"]) {
+            erros.adicionar("[Linha " + texto(linhaPropriedade) + "] Valor inválido para '" + nome + "'.")
+            continua
+        }
+        var caminho: texto[] = []
+        var partesNome: texto[] = nome.dividir(".")
+        para (var k: inteiro = 0; k < partesNome.tamanho(); k = k + 1) {
+            var parte: texto = partesNome[k]
+            caminho.adicionar(parte.aparar())
+        }
+        var dado = resultadoValor["dado"]
+        var entrada: dicionário = { "caminho": caminho, "dado": dado, "linha": linhaPropriedade }
+        entradas.adicionar(entrada)
+    }
+    retorna { "entradas": entradas, "erros": erros }
+}

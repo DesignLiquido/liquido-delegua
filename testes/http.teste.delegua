@@ -142,6 +142,6 @@ grupo("Roteador", funcao() {
     teste("nomes de métodos de registro", funcao() {
         afirmar.igual("GET", roteamento.metodoDeRegistro("rotaGet"))
         afirmar.igual("PROPFIND", roteamento.metodoDeRegistro("rotaPropfind"))
-        afirmar.igual(nulo, roteamento.metodoDeRegistro("rotaInexistente"))
+        afirmar.igual("", roteamento.metodoDeRegistro("rotaInexistente"))
     })
 })

@@ -44,13 +44,16 @@ classe Requisicao {
     }
 
     // Valor de um cabeçalho (sem diferenciar maiúsculas), ou nulo.
-    cabecalho(nome) {
-        var chave = ("" + nome).minusculo()
-        se (isto.cabecalhos.contem(chave)) { retorna isto.cabecalhos[chave] }
+    cabecalho(nome: texto): texto {
+        var chave: texto = ("" + nome).minusculo()
+        se (isto.cabecalhos.contem(chave)) {
+            var valorCabecalho: texto = isto.cabecalhos[chave]
+            retorna valorCabecalho
+        }
         retorna nulo
     }
 }
 
-funcao criarRequisicao() {
+funcao criarRequisicao(): Requisicao {
     retorna Requisicao()
 }

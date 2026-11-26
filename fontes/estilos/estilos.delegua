@@ -1,41 +1,43 @@
 // Conversão automática dos arquivos FolEs de `estilos/` para CSS no diretório de estilos
 // configurado (`liquido.estilos.diretorioBase`, padrão `publico/css`).
 importar tudo como arquivos de "arquivos"
-importar tudo como foles de "foles"
-importar tudo como textos de "../utilidades/texto.delegua"
+importar { converter_texto_para_css } de "foles"
+importar { terminaCom } de "../utilidades/texto.delegua"
 
 // Converte cada `estilos/*.foles`. Devolve { "escritos": [caminhos], "erros": [..] }.
-funcao escreverEstilos(diretorioBase, diretorioDestinoRelativo) {
-    var escritos = []
-    var erros = []
-    var diretorioEstilos = arquivos.juntarCaminhos(diretorioBase, "estilos")
+funcao gerarEstilosCss(diretorioBase: texto, diretorioDestinoRelativo: texto): dicionário {
+    var escritos: texto[] = []
+    var erros: texto[] = []
+    var diretorioEstilos: texto = arquivos.juntarCaminhos(diretorioBase, "estilos")
     se (nao arquivos.eDiretorio(diretorioEstilos)) {
         retorna { "escritos": escritos, "erros": erros }
     }
-    var diretorioDestino = arquivos.juntarCaminhos(diretorioBase, diretorioDestinoRelativo)
+    var diretorioDestino: texto = arquivos.juntarCaminhos(diretorioBase, diretorioDestinoRelativo)
     se (nao arquivos.criarDiretorio(diretorioDestino)) {
         erros.adicionar("Não foi possível criar o diretório " + diretorioDestino + ".")
         retorna { "escritos": escritos, "erros": erros }
     }
-    para cada nomeListado em arquivos.listarDiretorio(diretorioEstilos) {
-        var nome = "" + nomeListado
-        se (nao textos.terminaCom(nome, ".foles")) { continua }
-        var origem = arquivos.juntarCaminhos(diretorioEstilos, nome)
-        var conteudo = arquivos.lerTexto(origem)
+    var nomes: texto[] = arquivos.listarDiretorio(diretorioEstilos)
+    para (var indiceNomeListado: inteiro = 0; indiceNomeListado < nomes.tamanho(); indiceNomeListado = indiceNomeListado + 1) {
+        var nomeListado: texto = nomes[indiceNomeListado]
+        var nome: texto = "" + nomeListado
+        se (nao terminaCom(nome, ".foles")) { continua }
+        var origem: texto = arquivos.juntarCaminhos(diretorioEstilos, nome)
+        var conteudo: texto = arquivos.lerTexto(origem)
         se (conteudo == nulo) {
             erros.adicionar("Não foi possível ler " + origem + ".")
             continua
         }
-        var css = ""
-        var falhou = falso
+        var css: texto = ""
+        var falhou: lógico = falso
         tente {
-            css = foles.converter_texto_para_css(conteudo)
+            css = converter_texto_para_css(conteudo)
         } pegue (erro) {
             falhou = verdadeiro
             erros.adicionar("Erro no arquivo de estilo: " + origem + " — " + erro.mensagem + ". Pulando este arquivo.")
         }
         se (falhou) { continua }
-        var destino = arquivos.juntarCaminhos(diretorioDestino, nome.subtexto(0, nome.tamanho() - 6) + ".css")
+        var destino: texto = arquivos.juntarCaminhos(diretorioDestino, nome.subtexto(0, nome.tamanho() - 6) + ".css")
         se (arquivos.escreverTexto(destino, css)) {
             escritos.adicionar(destino)
         } senao {

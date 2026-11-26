@@ -3,29 +3,32 @@
 // As rotas vêm do roteador da aplicação. Descrições vêm dos decoradores `@rest.documentacao`
 // e `@rest.resposta` escritos antes de cada `liquido.rotaX(...)`; o gerador do Líquido os lê
 // dos arquivos de rota e os registra com `aplicacao.documentarRota`.
-importar tudo como jsonLiquido de "../utilidades/json.delegua"
-importar tudo como textos de "../utilidades/texto.delegua"
+importar { escaparTextoJson } de "../utilidades/json.delegua"
 
 // Nomes em português dos atributos dos decoradores → nomes OpenAPI.
-var atributosDocumentacao = {
-    "sumario": "summary",
-    "sumário": "summary",
-    "descricao": "description",
-    "descrição": "description",
-    "idOperacao": "operationId",
-    "idOperação": "operationId",
-    "etiquetas": "tags"
+funcao obterAtributosDocumentacao(): dicionário {
+    retorna {
+        "sumario": "summary",
+        "sumário": "summary",
+        "descricao": "description",
+        "descrição": "description",
+        "idOperacao": "operationId",
+        "idOperação": "operationId",
+        "etiquetas": "tags"
+    }
 }
 
-var atributosResposta = {
-    "descricao": "description",
-    "descrição": "description",
-    "formatos": "content"
+funcao obterAtributosResposta(): dicionário {
+    retorna {
+        "descricao": "description",
+        "descrição": "description",
+        "formatos": "content"
+    }
 }
 
 // "/clientes/:id" → "/clientes/{id}".
-funcao caminhoOpenApi(caminho) {
-    var segmentos = []
+funcao caminhoOpenApi(caminho: texto): texto {
+    var segmentos: texto[] = []
     para cada segmento em ("" + caminho).dividir("/") {
         se (segmento == "") { continua }
         se (segmento[0] == ":") {
@@ -39,17 +42,20 @@ funcao caminhoOpenApi(caminho) {
 
 // Converte os decoradores de uma rota ({ "documentacao": {..}, "respostas": [{..}] })
 // na operação OpenAPI. Devolve { "operacao": {..}, "erros": [..] }.
-funcao montarOperacao(caminho, decoradores) {
-    var operacao = {}
-    var erros = []
-    var respostas = {}
+funcao montarOperacao(caminho: texto, decoradores: dicionário): dicionário {
+    var operacao: dicionário = {}
+    var erros: texto[] = []
+    var respostas: dicionário = {}
+    var atributosDocumentacao: dicionário = obterAtributosDocumentacao()
+    var atributosResposta: dicionário = obterAtributosResposta()
 
     se (decoradores != nulo e decoradores.contem("documentacao")) {
-        var documentacaoRota = decoradores["documentacao"]
+        var documentacaoRota: dicionário = decoradores["documentacao"]
         para cada nome em documentacaoRota.chaves() {
             se (atributosDocumentacao.contem(nome)) {
                 var valorDocumentacao = documentacaoRota[nome]
-                operacao[atributosDocumentacao[nome]] = valorDocumentacao
+                var chaveOpenApi: texto = atributosDocumentacao[nome]
+                operacao[chaveOpenApi] = valorDocumentacao
             } senao {
                 erros.adicionar("Atributo '" + nome + "' não é válido em @rest.documentacao.")
             }
@@ -57,7 +63,9 @@ funcao montarOperacao(caminho, decoradores) {
     }
 
     se (decoradores != nulo e decoradores.contem("respostas")) {
-        para cada atributos em decoradores["respostas"] {
+        var listaRespostas: vetor = decoradores["respostas"]
+        para (var i: inteiro = 0; i < listaRespostas.tamanho(); i = i + 1) {
+            var atributos: dicionário = listaRespostas[i]
             var codigo = nulo
             se (atributos.contem("codigo")) { codigo = atributos["codigo"] }
             se (atributos.contem("código")) { codigo = atributos["código"] }
@@ -65,19 +73,21 @@ funcao montarOperacao(caminho, decoradores) {
                 erros.adicionar("Decorador @rest.resposta não possui atributo obrigatório 'código' ou 'codigo'.")
                 continua
             }
-            var respostaOpenApi = { "description": "" }
+            var respostaOpenApi: dicionário = { "description": "" }
             para cada nomeResposta em atributos.chaves() {
                 se (nomeResposta == "codigo" ou nomeResposta == "código") { continua }
                 se (nao atributosResposta.contem(nomeResposta)) {
                     erros.adicionar("Atributo '" + nomeResposta + "' não é válido em @rest.resposta.")
                     continua
                 }
-                var nomeOpenApi = atributosResposta[nomeResposta]
+                var nomeOpenApi: texto = atributosResposta[nomeResposta]
                 var valorResposta = atributos[nomeResposta]
                 se (nomeOpenApi == "content") {
-                    var conteudo = {}
-                    para cada formato em valorResposta {
-                        var vazio = {}
+                    var conteudo: dicionário = {}
+                    var formatosLista: texto[] = valorResposta
+                    para (var indiceFormato: inteiro = 0; indiceFormato < formatosLista.tamanho(); indiceFormato = indiceFormato + 1) {
+                        var formato: texto = formatosLista[indiceFormato]
+                        var vazio: dicionário = {}
                         conteudo[formato] = vazio
                     }
                     respostaOpenApi["content"] = conteudo
@@ -90,63 +100,70 @@ funcao montarOperacao(caminho, decoradores) {
     }
 
     // Parâmetros de caminho, obrigatórios no OpenAPI.
-    var parametros = []
+    var parametros: vetor = []
     para cada segmento em ("" + caminho).dividir("/") {
         se (segmento != "" e segmento[0] == ":") {
-            var esquema = { "type": "string" }
-            var parametro = { "name": segmento.subtexto(1, segmento.tamanho()), "in": "path", "required": verdadeiro, "schema": esquema }
+            var esquema: dicionário = { "type": "string" }
+            var parametro: dicionário = { "name": segmento.subtexto(1, segmento.tamanho()), "in": "path", "required": verdadeiro, "schema": esquema }
             parametros.adicionar(parametro)
         }
     }
     se (parametros.tamanho() > 0) { operacao["parameters"] = parametros }
 
     se (respostas.chaves().tamanho() == 0) {
-        var respostaPadrao = { "description": "Sucesso" }
+        var respostaPadrao: dicionário = { "description": "Sucesso" }
         respostas["200"] = respostaPadrao
     }
     operacao["responses"] = respostas
     retorna { "operacao": operacao, "erros": erros }
 }
 
-funcao textoOuPadrao(valorConfiguracao, padraoValor) {
+funcao textoOuPadrao(valorConfiguracao: texto, padraoValor: texto): texto {
     se (valorConfiguracao == nulo ou valorConfiguracao == "") { retorna padraoValor }
     retorna valorConfiguracao
 }
 
 // Monta o documento OpenAPI da aplicação.
-funcao documentar(aplicacao) {
-    var configuracaoAplicacao = aplicacao.configuracao["liquido"]["aplicacao"]
-    var licenca = {
-        "name": textoOuPadrao(configuracaoAplicacao["licenca"]["nome"], "MIT"),
-        "url": textoOuPadrao(configuracaoAplicacao["licenca"]["url"], "https://github.com/DesignLiquido/liquido/LICENSE")
+funcao documentar(aplicacao: qualquer): dicionário {
+    var liquidoCfg: dicionário = aplicacao.configuracao["liquido"]
+    var configuracaoAplicacao: dicionário = liquidoCfg["aplicacao"]
+    var licencaCfg: dicionário = configuracaoAplicacao["licenca"]
+    var licenca: dicionário = {
+        "name": textoOuPadrao(licencaCfg["nome"], "MIT"),
+        "url": textoOuPadrao(licencaCfg["url"], "https://github.com/DesignLiquido/liquido/LICENSE")
     }
-    var informacoes = {
+    var informacoes: dicionário = {
         "description": textoOuPadrao(configuracaoAplicacao["descricao"], "Aplicação em Líquido"),
         "version": textoOuPadrao(configuracaoAplicacao["versao"], "0.0.1"),
         "title": textoOuPadrao(configuracaoAplicacao["nome"], "Aplicação Líquido"),
         "license": licenca
     }
-    var caminhos = {}
-    para cada rota em aplicacao.roteador.rotas {
-        var chaveCaminho = caminhoOpenApi(rota["caminho"])
+    var caminhos: dicionário = {}
+    var rotas: vetor = aplicacao.roteador.rotas
+    para (var i: inteiro = 0; i < rotas.tamanho(); i = i + 1) {
+        var rota: dicionário = rotas[i]
+        var caminhoRota: texto = rota["caminho"]
+        var metodoRota: texto = rota["metodo"]
+        var chaveCaminho: texto = caminhoOpenApi(caminhoRota)
         se (nao caminhos.contem(chaveCaminho)) {
-            var novoCaminho = {}
+            var novoCaminho: dicionário = {}
             caminhos[chaveCaminho] = novoCaminho
         }
-        var chaveDocumentacao = rota["metodo"] + " " + rota["caminho"]
-        var decoradores = nulo
+        var chaveDocumentacao: texto = metodoRota + " " + caminhoRota
+        var decoradores: dicionário = nulo
         se (aplicacao.documentacaoRotas.contem(chaveDocumentacao)) {
             decoradores = aplicacao.documentacaoRotas[chaveDocumentacao]
         }
-        var montada: dicionário = montarOperacao(rota["caminho"], decoradores)
-        caminhos[chaveCaminho][rota["metodo"].minusculo()] = montada["operacao"]
+        var montada: dicionário = montarOperacao(caminhoRota, decoradores)
+        var operacoesCaminho: dicionário = caminhos[chaveCaminho]
+        operacoesCaminho[metodoRota.minusculo()] = montada["operacao"]
     }
-    var servidores = []
+    var servidores: vetor = []
     retorna { "openapi": "3.0.0", "servers": servidores, "info": informacoes, "paths": caminhos }
 }
 
-funcao paginaRedoc(enderecoEspecificacao) {
-    var opcoes = "{\"theme\":{\"colors\":{\"primary\":{\"main\":\"#6EC5AB\"}},\"typography\":{\"fontFamily\":\"\\\"museo-sans\\\", 'Helvetica Neue', Helvetica, Arial, sans-serif\",\"fontSize\":\"15px\",\"lineHeight\":\"1.5\",\"code\":{\"code\":\"#87E8C7\",\"backgroundColor\":\"#4D4D4E\"}},\"menu\":{\"backgroundColor\":\"#ffffff\"}}}"
+funcao paginaRedoc(enderecoEspecificacao: texto): texto {
+    var opcoes: texto = "{\"theme\":{\"colors\":{\"primary\":{\"main\":\"#6EC5AB\"}},\"typography\":{\"fontFamily\":\"\\\"museo-sans\\\", 'Helvetica Neue', Helvetica, Arial, sans-serif\",\"fontSize\":\"15px\",\"lineHeight\":\"1.5\",\"code\":{\"code\":\"#87E8C7\",\"backgroundColor\":\"#4D4D4E\"}},\"menu\":{\"backgroundColor\":\"#ffffff\"}}}"
     retorna "<!DOCTYPE html>\n<html lang=\"pt\">\n<head>\n" +
         "    <meta charset=\"utf-8\">\n" +
         "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n" +
@@ -155,6 +172,6 @@ funcao paginaRedoc(enderecoEspecificacao) {
         "</head>\n<body>\n" +
         "    <div id=\"redoc-container\"></div>\n" +
         "    <script src=\"https://cdn.jsdelivr.net/npm/redoc@2.1.5/bundles/redoc.standalone.js\"></script>\n" +
-        "    <script>Redoc.init(" + jsonLiquido.escaparTextoJson(enderecoEspecificacao) + ", " + opcoes + ", document.getElementById('redoc-container'));</script>\n" +
+        "    <script>Redoc.init(" + escaparTextoJson(enderecoEspecificacao) + ", " + opcoes + ", document.getElementById('redoc-container'));</script>\n" +
         "</body>\n</html>"
 }

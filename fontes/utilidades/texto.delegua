@@ -2,43 +2,43 @@
 // As primitivas de texto de Delégua cobrem o básico; aqui ficam as operações que faltam
 // (substituição de todas as ocorrências, prefixos, repetição etc.).
 
-funcao ehEspaco(caractere) {
+funcao ehEspaco(caractere: texto): lógico {
     retorna caractere == " " ou caractere == "\n" ou caractere == "\r" ou caractere == "\t"
 }
 
-funcao comecaCom(textoOriginal, prefixo) {
-    var textoBase = "" + textoOriginal
-    var inicio = "" + prefixo
+funcao comecaCom(textoOriginal: texto, prefixo: texto): lógico {
+    var textoBase: texto = "" + textoOriginal
+    var inicio: texto = "" + prefixo
     se (inicio.tamanho() > textoBase.tamanho()) { retorna falso }
     retorna textoBase.subtexto(0, inicio.tamanho()) == inicio
 }
 
-funcao terminaCom(textoOriginal, sufixo) {
-    var textoBase = "" + textoOriginal
-    var fim = "" + sufixo
+funcao terminaCom(textoOriginal: texto, sufixo: texto): lógico {
+    var textoBase: texto = "" + textoOriginal
+    var fim: texto = "" + sufixo
     se (fim.tamanho() > textoBase.tamanho()) { retorna falso }
     retorna textoBase.subtexto(textoBase.tamanho() - fim.tamanho(), textoBase.tamanho()) == fim
 }
 
 // `substituir` das primitivas troca apenas a primeira ocorrência.
-funcao substituirTodos(textoOriginal, procurado, substituto) {
-    var textoBase = "" + textoOriginal
+funcao substituirTodos(textoOriginal: texto, procurado: texto, substituto: texto): texto {
+    var textoBase: texto = "" + textoOriginal
     se (procurado == "") { retorna textoBase }
     retorna textoBase.dividir(procurado).juntar(substituto)
 }
 
-funcao repetir(textoOriginal, quantidade) {
-    var resultado = ""
-    para (var i = 0; i < quantidade; i = i + 1) {
+funcao repetir(textoOriginal: texto, quantidade: inteiro): texto {
+    var resultado: texto = ""
+    para (var i: inteiro = 0; i < quantidade; i = i + 1) {
         resultado = resultado + textoOriginal
     }
     retorna resultado
 }
 
 // Divide apenas na primeira ocorrência do separador: "a=b=c" -> ["a", "b=c"].
-funcao dividirPrimeira(textoOriginal, separador) {
-    var textoBase = "" + textoOriginal
-    var posicao = textoBase.encontrar(separador)
+funcao dividirPrimeira(textoOriginal: texto, separador: texto): texto[] {
+    var textoBase: texto = "" + textoOriginal
+    var posicao: inteiro = textoBase.encontrar(separador)
     se (posicao < 0) { retorna [textoBase] }
     retorna [
         textoBase.subtexto(0, posicao),
@@ -47,22 +47,22 @@ funcao dividirPrimeira(textoOriginal, separador) {
 }
 
 // Posição da próxima ocorrência de `procurado` a partir de `inicio`, ou -1.
-funcao encontrarAPartir(textoOriginal, procurado, inicio) {
-    var textoBase = "" + textoOriginal
+funcao encontrarAPartir(textoOriginal: texto, procurado: texto, inicio: inteiro): inteiro {
+    var textoBase: texto = "" + textoOriginal
     se (inicio >= textoBase.tamanho()) { retorna -1 }
-    var resto = textoBase.subtexto(inicio, textoBase.tamanho())
-    var posicao = resto.encontrar(procurado)
+    var resto: texto = textoBase.subtexto(inicio, textoBase.tamanho())
+    var posicao: inteiro = resto.encontrar(procurado)
     se (posicao < 0) { retorna -1 }
     retorna inicio + posicao
 }
 
 // Remove acentos comuns do português (para normalizar nomes como "pituguês").
-funcao removerAcentos(textoOriginal) {
-    var comAcento = "áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ"
-    var semAcento = "aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC"
-    var resultado = ""
+funcao removerAcentos(textoOriginal: texto): texto {
+    var comAcento: texto = "áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ"
+    var semAcento: texto = "aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC"
+    var resultado: texto = ""
     para cada caractere em "" + textoOriginal {
-        var posicao = comAcento.encontrar(caractere)
+        var posicao: inteiro = comAcento.encontrar(caractere)
         se (posicao >= 0) { resultado = resultado + semAcento[posicao] }
         senao { resultado = resultado + caractere }
     }
@@ -70,8 +70,8 @@ funcao removerAcentos(textoOriginal) {
 }
 
 // Escapa texto para inclusão segura em HTML.
-funcao escaparHtml(valor) {
-    var resultado = ""
+funcao escaparHtml(valor: texto): texto {
+    var resultado: texto = ""
     para cada caractere em "" + valor {
         se (caractere == "&") { resultado = resultado + "&amp;" }
         senao se (caractere == "<") { resultado = resultado + "&lt;" }
@@ -85,10 +85,10 @@ funcao escaparHtml(valor) {
     retorna resultado
 }
 
-funcao ehDigito(caractere) {
+funcao ehDigito(caractere: texto): lógico {
     retorna "0123456789".inclui(caractere) e caractere != ""
 }
 
-funcao ehLetraOuDigito(caractere) {
+funcao ehLetraOuDigito(caractere: texto): lógico {
     retorna "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".inclui(caractere) e caractere != ""
 }

@@ -49,7 +49,7 @@ grupo("JSON", funcao() {
     })
 
     teste("analisa objetos e vetores", funcao() {
-        var resultado = jsonLiquido.analisar(" { \"a\": [1, 2.5, -3], \"b\": { \"c\": \"ç\\n\" }, \"d\": true, \"e\": null } ")
+        var resultado = jsonLiquido.analisarJson(" { \"a\": [1, 2.5, -3], \"b\": { \"c\": \"ç\\n\" }, \"d\": true, \"e\": null } ")
         afirmar.igual("", resultado["erro"])
         var valor = resultado["resultado"]
         afirmar.igual(3, valor["a"].tamanho())
@@ -61,12 +61,12 @@ grupo("JSON", funcao() {
 
     teste("ida e volta", funcao() {
         var original = "{\"x\":[{\"y\":\"z\"},false],\"n\":10}"
-        afirmar.igual(original, jsonLiquido.serializar(jsonLiquido.analisar(original)["resultado"]))
+        afirmar.igual(original, jsonLiquido.serializar(jsonLiquido.analisarJson(original)["resultado"]))
     })
 
     teste("informa erros", funcao() {
-        afirmar.diferente("", jsonLiquido.analisar("{\"a\": }")["erro"])
-        afirmar.diferente("", jsonLiquido.analisar("[1, 2")["erro"])
-        afirmar.diferente("", jsonLiquido.analisar("{} x")["erro"])
+        afirmar.diferente("", jsonLiquido.analisarJson("{\"a\": }")["erro"])
+        afirmar.diferente("", jsonLiquido.analisarJson("[1, 2")["erro"])
+        afirmar.diferente("", jsonLiquido.analisarJson("{} x")["erro"])
     })
 })

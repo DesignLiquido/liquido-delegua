@@ -2,11 +2,13 @@
   "nome": "liquido",
   "descricao": "Conjunto de ferramentas para desenvolvimento de aplicações para a internet 100% em português, escrito em Delégua.",
   "versao": "0.1.0",
-  "realizacoes": ["node"],
+  "realizacoes": ["node", "llvm"],
   "pontoDeEntrada": "fontes/liquido.delegua",
   "dependencias": {
-    "lmht": "^0.1.0",
-    "foles": "^0.1.0"
+    "delegua": "^0.1.0",
+    "delprops": "^0.1.0",
+    "foles": "^0.1.0",
+    "lmht": "^0.1.0"
   },
   "simbolos": [
     {

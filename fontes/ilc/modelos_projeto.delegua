@@ -2,8 +2,8 @@
 // Ficam embutidos como textos porque um programa em Delégua não conhece o diretório do
 // próprio pacote em tempo de execução.
 
-funcao configuracao(arquetipo) {
-    var descricao = "A minha aplicação é uma API REST."
+funcao configuracao(arquetipo: texto): texto {
+    var descricao: texto = "A minha aplicação é uma API REST."
     se (arquetipo == "mvc") { descricao = "A minha aplicação é um MVC." }
     retorna "// Configuração da aplicação em si.\n" +
         "liquido.arquetipo = '" + arquetipo + "'\n" +
@@ -31,7 +31,7 @@ funcao configuracao(arquetipo) {
         "liquido.roteador.helmet = verdadeiro\n"
 }
 
-funcao rotaRest() {
+funcao rotaRest(): texto {
     retorna "@rest.documentacao(\n" +
         "    sumario = \"Um exemplo de rota GET.\",\n" +
         "    descricao = \"Uma descrição mais detalhada sobre como a rota GET funciona.\",\n" +
@@ -56,7 +56,7 @@ funcao rotaRest() {
         "})\n"
 }
 
-funcao rotaMvc() {
+funcao rotaMvc(): texto {
     retorna "liquido.rotaGet(funcao(requisicao, resposta) {\n" +
         "    resposta.lmht({\n" +
         "        \"nome\": \"mundo\"\n" +
@@ -64,7 +64,7 @@ funcao rotaMvc() {
         "})\n"
 }
 
-funcao visaoInicial() {
+funcao visaoInicial(): texto {
     retorna "<lmht>\n" +
         "    <cabeça>\n" +
         "        <meta nome=\"viewport\" conteudo=\"width=device-width, initial-scale=1.0\" />\n" +
@@ -83,7 +83,7 @@ funcao visaoInicial() {
         "</lmht>\n"
 }
 
-funcao estiloPrincipal() {
+funcao estiloPrincipal(): texto {
     retorna "corpo {\n" +
         "    cor-fundo: #f4f6f8;\n" +
         "    cor: #22303c;\n" +
@@ -97,8 +97,8 @@ funcao estiloPrincipal() {
         "}\n"
 }
 
-funcao leiame(nome, arquetipo) {
-    var tipoProjeto = "API REST"
+funcao leiame(nome: texto, arquetipo: texto): texto {
+    var tipoProjeto: texto = "API REST"
     se (arquetipo == "mvc") { tipoProjeto = "MVC (Modelo, Visão, Controlador)" }
     retorna "# " + nome + "\n\n" +
         "Aplicação " + tipoProjeto + " em [Líquido](https://github.com/DesignLiquido/liquido), escrita em Delégua.\n\n" +
@@ -114,19 +114,20 @@ funcao leiame(nome, arquetipo) {
 }
 
 // Rota gerada por `liquido gerar rota`, com um tratador por método.
-funcao rotaGerada(metodos, arquetipo) {
-    var textoRota = ""
-    para cada metodo em metodos {
-        var nome = metodo.minusculo()
-        var nomeMetodo = "rota" + nome.subtexto(0, 1).maiusculo() + nome.subtexto(1, nome.tamanho())
-        var corpoRota = "    resposta.json({ \"mensagem\": \"" + metodo.maiusculo() + " ok\" })\n"
+funcao rotaGerada(metodos: texto[], arquetipo: texto): texto {
+    var textoRota: texto = ""
+    para (var i: inteiro = 0; i < metodos.tamanho(); i = i + 1) {
+        var metodo: texto = metodos[i]
+        var nome: texto = metodo.minusculo()
+        var nomeMetodo: texto = "rota" + nome.subtexto(0, 1).maiusculo() + nome.subtexto(1, nome.tamanho())
+        var corpoRota: texto = "    resposta.json({ \"mensagem\": \"" + metodo.maiusculo() + " ok\" })\n"
         se (arquetipo == "mvc" e nome == "get") { corpoRota = "    resposta.lmht({})\n" }
         textoRota = textoRota + "liquido." + nomeMetodo + "(funcao(requisicao, resposta) {\n" + corpoRota + "})\n\n"
     }
     retorna textoRota
 }
 
-funcao visaoGerada(titulo) {
+funcao visaoGerada(titulo: texto): texto {
     retorna "<lmht>\n" +
         "    <cabeça>\n" +
         "        <titulo>" + titulo + "</titulo>\n" +

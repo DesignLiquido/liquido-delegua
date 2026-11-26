@@ -1,7 +1,7 @@
 // Páginas HTML padrão do Líquido: rota não encontrada e erro de execução.
-importar tudo como textos de "../utilidades/texto.delegua"
+importar { escaparHtml } de "../utilidades/texto.delegua"
 
-funcao estiloComum(corTopo, corBordaTitulo) {
+funcao estiloComum(corTopo: texto, corBordaTitulo: texto): texto {
     retorna "        :root {\n" +
         "            --fundo: #f4f6f8;\n" +
         "            --texto: #333;\n" +
@@ -57,7 +57,7 @@ funcao estiloComum(corTopo, corBordaTitulo) {
         "        ul.pilha { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 15px; }\n"
 }
 
-funcao montarPagina(tituloPagina, titulo, conteudo, corTopo, corBordaTitulo) {
+funcao montarPagina(tituloPagina: texto, titulo: texto, conteudo: texto, corTopo: texto, corBordaTitulo: texto): texto {
     retorna "<!DOCTYPE html>\n<html lang=\"pt\">\n<head>\n" +
         "    <meta charset=\"UTF-8\">\n" +
         "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
@@ -69,9 +69,9 @@ funcao montarPagina(tituloPagina, titulo, conteudo, corTopo, corBordaTitulo) {
         "</body>\n</html>"
 }
 
-funcao paginaNaoEncontrada(metodo, caminho) {
-    var conteudo = "        <h2>Detalhes da requisição</h2>\n" +
-        "        <pre>" + textos.escaparHtml(metodo) + " " + textos.escaparHtml(caminho) + "</pre>\n" +
+funcao paginaNaoEncontrada(metodo: texto, caminho: texto): texto {
+    var conteudo: texto = "        <h2>Detalhes da requisição</h2>\n" +
+        "        <pre>" + escaparHtml(metodo) + " " + escaparHtml(caminho) + "</pre>\n" +
         "        <div class=\"caixa\">\n" +
         "            <strong>Dica:</strong> Verifique se o endereço digitado está correto.\n" +
         "            Utilize a ferramenta de documentação em <a href=\"/docs\">/docs</a>\n" +
@@ -80,11 +80,12 @@ funcao paginaNaoEncontrada(metodo, caminho) {
     retorna montarPagina("Página não encontrada — Líquido", "Página não encontrada", conteudo, "#4a90d9", "#cce0ff")
 }
 
-funcao paginaErro(linhasErro) {
-    var itens = ""
-    para cada linha em linhasErro {
-        itens = itens + "            <li class=\"caixa\"><pre>" + textos.escaparHtml(linha) + "</pre></li>\n"
+funcao paginaErro(linhasErro: texto[]): texto {
+    var itens: texto = ""
+    para (var indiceLinha: inteiro = 0; indiceLinha < linhasErro.tamanho(); indiceLinha = indiceLinha + 1) {
+        var linha: texto = linhasErro[indiceLinha]
+        itens = itens + "            <li class=\"caixa\"><pre>" + escaparHtml(linha) + "</pre></li>\n"
     }
-    var conteudo = "        <h2>Pilha de Execução</h2>\n        <ul class=\"pilha\">\n" + itens + "        </ul>\n"
+    var conteudo: texto = "        <h2>Pilha de Execução</h2>\n        <ul class=\"pilha\">\n" + itens + "        </ul>\n"
     retorna montarPagina("Erro de Execução - Líquido", "Ocorreu um erro", conteudo, "#dc3545", "#ffcccc")
 }

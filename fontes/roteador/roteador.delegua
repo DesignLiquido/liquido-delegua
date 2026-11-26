@@ -1,26 +1,28 @@
 // Roteador: registra rotas por método e caminho (com parâmetros `:nome`) e resolve requisições.
-importar tudo como url de "../http/url.delegua"
+importar { normalizarCaminho, segmentosCaminho } de "../http/url.delegua"
 
-var metodosRota = {
-    "rotaGet": "GET",
-    "rotaPost": "POST",
-    "rotaPut": "PUT",
-    "rotaDelete": "DELETE",
-    "rotaPatch": "PATCH",
-    "rotaCopy": "COPY",
-    "rotaHead": "HEAD",
-    "rotaOptions": "OPTIONS",
-    "rotaPurge": "PURGE",
-    "rotaLock": "LOCK",
-    "rotaUnlock": "UNLOCK",
-    "rotaPropfind": "PROPFIND",
-    "rotaLink": "LINK",
-    "rotaUnlink": "UNLINK",
-    "rotaView": "VIEW"
+funcao obterMetodosRota(): dicionário {
+    retorna {
+        "rotaGet": "GET",
+        "rotaPost": "POST",
+        "rotaPut": "PUT",
+        "rotaDelete": "DELETE",
+        "rotaPatch": "PATCH",
+        "rotaCopy": "COPY",
+        "rotaHead": "HEAD",
+        "rotaOptions": "OPTIONS",
+        "rotaPurge": "PURGE",
+        "rotaLock": "LOCK",
+        "rotaUnlock": "UNLOCK",
+        "rotaPropfind": "PROPFIND",
+        "rotaLink": "LINK",
+        "rotaUnlink": "UNLINK",
+        "rotaView": "VIEW"
+    }
 }
 
-funcao segmentosPadrao(caminhoRota) {
-    var segmentos = []
+funcao segmentosPadrao(caminhoRota: texto): texto[] {
+    var segmentos: texto[] = []
     para cada segmento em ("" + caminhoRota).dividir("/") {
         se (segmento != "") { segmentos.adicionar(segmento) }
     }
@@ -30,15 +32,15 @@ funcao segmentosPadrao(caminhoRota) {
 // Compara os segmentos de uma rota com os de um caminho.
 // Devolve { "encontrou", "parametros", "estaticos" }; `estaticos` conta segmentos fixos
 // e serve para preferir `/clientes/novo` a `/clientes/:id`.
-funcao corresponder(segmentosRota, segmentosCaminho) {
-    var parametros = {}
-    se (segmentosRota.tamanho() != segmentosCaminho.tamanho()) {
+funcao corresponder(segmentosRota: texto[], segmentosRecebidos: texto[]): dicionário {
+    var parametros: dicionário = {}
+    se (segmentosRota.tamanho() != segmentosRecebidos.tamanho()) {
         retorna { "encontrou": falso, "parametros": parametros, "estaticos": 0 }
     }
-    var estaticos = 0
-    para (var i = 0; i < segmentosRota.tamanho(); i = i + 1) {
-        var esperado = segmentosRota[i]
-        var recebido = segmentosCaminho[i]
+    var estaticos: inteiro = 0
+    para (var i: inteiro = 0; i < segmentosRota.tamanho(); i = i + 1) {
+        var esperado: texto = segmentosRota[i]
+        var recebido: texto = segmentosRecebidos[i]
         se (esperado.tamanho() > 1 e esperado[0] == ":") {
             parametros[esperado.subtexto(1, esperado.tamanho())] = recebido
         } senao {
@@ -60,16 +62,17 @@ classe Roteador {
 
     // `funcoes`: middlewares seguidos do tratador final.
     // Devolve falso (e não registra) se o método já existe para o caminho.
-    registrar(metodo, caminho, funcoes, arquivo) {
-        var metodoNormalizado = ("" + metodo).maiusculo()
-        var caminhoNormalizado = url.normalizarCaminho(caminho)
-        para cada existente em isto.rotas {
+    registrar(metodo: texto, caminho: texto, funcoes: vetor, arquivo: texto): lógico {
+        var metodoNormalizado: texto = ("" + metodo).maiusculo()
+        var caminhoNormalizado: texto = normalizarCaminho(caminho)
+        para (var i: inteiro = 0; i < isto.rotas.tamanho(); i = i + 1) {
+            var existente: dicionário = isto.rotas[i]
             se (existente["metodo"] == metodoNormalizado e existente["caminho"] == caminhoNormalizado) {
                 retorna falso
             }
         }
-        var segmentos = segmentosPadrao(caminhoNormalizado)
-        var rota = {
+        var segmentos: texto[] = segmentosPadrao(caminhoNormalizado)
+        var rota: dicionário = {
             "metodo": metodoNormalizado,
             "caminho": caminhoNormalizado,
             "segmentos": segmentos,
@@ -81,34 +84,37 @@ classe Roteador {
     }
 
     // Resolve uma requisição. `situacao`: "encontrada", "metodoNaoPermitido", "naoEncontrada" ou "caminhoInvalido".
-    resolver(metodo, caminho) {
-        var metodoNormalizado = ("" + metodo).maiusculo()
-        var segmentosCaminho = url.segmentosCaminho(caminho)
-        var semParametros = {}
-        var metodosVazios = []
-        se (segmentosCaminho == nulo) {
+    resolver(metodo: texto, caminho: texto): dicionário {
+        var metodoNormalizado: texto = ("" + metodo).maiusculo()
+        var segCaminho: texto[] = segmentosCaminho(caminho)
+        var semParametros: dicionário = {}
+        var metodosVazios: texto[] = []
+        se (segCaminho == nulo) {
             retorna { "situacao": "caminhoInvalido", "rota": nulo, "parametros": semParametros, "metodos": metodosVazios }
         }
 
-        var melhor = nulo
-        var melhorParametros = {}
-        var melhorEstaticos = -1
-        var melhorGet = nulo
-        var melhorGetParametros = {}
-        var melhorGetEstaticos = -1
-        var metodosCaminho = []
+        var melhor: dicionário = nulo
+        var melhorParametros: dicionário = {}
+        var melhorEstaticos: inteiro = -1
+        var melhorGet: dicionário = nulo
+        var melhorGetParametros: dicionário = {}
+        var melhorGetEstaticos: inteiro = -1
+        var metodosCaminho: texto[] = []
 
-        para cada rota em isto.rotas {
-            var correspondencia: dicionário = corresponder(rota["segmentos"], segmentosCaminho)
+        para (var i: inteiro = 0; i < isto.rotas.tamanho(); i = i + 1) {
+            var rota: dicionário = isto.rotas[i]
+            var segmentosRota: texto[] = rota["segmentos"]
+            var correspondencia: dicionário = corresponder(segmentosRota, segCaminho)
             se (nao correspondencia["encontrou"]) { continua }
-            se (nao metodosCaminho.inclui(rota["metodo"])) { metodosCaminho.adicionar(rota["metodo"]) }
-            var estaticos = correspondencia["estaticos"]
-            se (rota["metodo"] == metodoNormalizado e estaticos > melhorEstaticos) {
+            var metodoRota: texto = rota["metodo"]
+            se (nao metodosCaminho.inclui(metodoRota)) { metodosCaminho.adicionar(metodoRota) }
+            var estaticos: inteiro = correspondencia["estaticos"]
+            se (metodoRota == metodoNormalizado e estaticos > melhorEstaticos) {
                 melhor = rota
                 melhorParametros = correspondencia["parametros"]
                 melhorEstaticos = estaticos
             }
-            se (rota["metodo"] == "GET" e estaticos > melhorGetEstaticos) {
+            se (metodoRota == "GET" e estaticos > melhorGetEstaticos) {
                 melhorGet = rota
                 melhorGetParametros = correspondencia["parametros"]
                 melhorGetEstaticos = estaticos
@@ -132,11 +138,15 @@ classe Roteador {
     }
 }
 
-funcao criarRoteador() {
+funcao criarRoteador(): Roteador {
     retorna Roteador()
 }
 
-funcao metodoDeRegistro(nomeMetodoRota) {
-    se (metodosRota.contem(nomeMetodoRota)) { retorna metodosRota[nomeMetodoRota] }
-    retorna nulo
+funcao metodoDeRegistro(nomeMetodoRota: texto): texto {
+    var metodosRota: dicionário = obterMetodosRota()
+    se (metodosRota.contem(nomeMetodoRota)) {
+        var metodo: texto = metodosRota[nomeMetodoRota]
+        retorna metodo
+    }
+    retorna ""
 }

@@ -37,24 +37,24 @@ classe Resposta {
     }
 
     // Responde com texto. Textos que começam com `<?xml` são enviados como XML.
-    enviar(mensagem) {
+    enviar(mensagem: qualquer): Resposta {
         isto.mensagem = mensagem
         retorna isto
     }
 
-    status(codigo) {
+    status(codigo: inteiro): Resposta {
         isto.statusHttp = codigo
         retorna isto
     }
 
-    json(dados) {
+    json(dados: qualquer): Resposta {
         isto.respostaJson = dados
         isto.temJson = verdadeiro
         retorna isto
     }
 
     // Redireciona (302, ou o status já definido entre 300 e 399).
-    redirecionar(destino) {
+    redirecionar(destino: texto): Resposta {
         isto.destino = destino
         retorna isto
     }
@@ -63,7 +63,7 @@ classe Resposta {
     // - `lmht()`: visão da rota, sem valores;
     // - `lmht(valores)`: visão da rota com valores;
     // - `lmht("nome-da-visao", valores)`: visão com outro nome, no mesmo diretório da rota.
-    lmht(...visaoEValores) {
+    lmht(...visaoEValores): Resposta {
         isto.usarLmht = verdadeiro
         se (visaoEValores.tamanho() > 1) {
             isto.visao = visaoEValores[0]
@@ -74,42 +74,42 @@ classe Resposta {
         retorna isto
     }
 
-    cabecalho(nome, valor) {
-        var par = [nome, "" + valor]
+    cabecalho(nome: texto, valor: qualquer): Resposta {
+        var par: texto[] = [nome, "" + valor]
         isto.cabecalhosAdicionais.adicionar(par)
         retorna isto
     }
 
     // Define o Content-Type da resposta, por exemplo "text/csv; charset=utf-8".
-    tipoConteudo(tipoConteudo) {
+    tipoConteudo(tipoConteudo: texto): Resposta {
         isto.tipoDefinido = tipoConteudo
         retorna isto
     }
 
     // Define um cookie. Opções (dicionário opcional): caminho, dominio, idadeMaxima,
     // expira, seguro, somenteHttp, mesmoSitio.
-    cookie(nome, valor, ...opcoes) {
-        var opcoesCookie = {}
+    cookie(nome: texto, valor: qualquer, ...opcoes): Resposta {
+        var opcoesCookie: dicionário = {}
         se (opcoes.tamanho() > 0 e opcoes[0] != nulo) { opcoesCookie = opcoes[0] }
-        var definicao = [nome, "" + valor, opcoesCookie]
+        var definicao: vetor = [nome, "" + valor, opcoesCookie]
         isto.cookiesDefinidos.adicionar(definicao)
         retorna isto
     }
 
-    limparCookie(nome) {
-        var opcoesCookie = { "idadeMaxima": 0, "expira": "Thu, 01 Jan 1970 00:00:00 GMT" }
-        var definicao = [nome, "", opcoesCookie]
+    limparCookie(nome: texto): Resposta {
+        var opcoesCookie: dicionário = { "idadeMaxima": 0, "expira": "Thu, 01 Jan 1970 00:00:00 GMT" }
+        var definicao: vetor = [nome, "", opcoesCookie]
         isto.cookiesDefinidos.adicionar(definicao)
         retorna isto
     }
 
     // Verdadeiro se a resposta já tem conteúdo (usado para interromper a cadeia de middlewares).
-    definida() {
+    definida(): lógico {
         se (isto.destino != nulo ou isto.usarLmht ou isto.temJson ou isto.mensagem != nulo) { retorna verdadeiro }
         retorna isto.statusHttp != nulo e isto.statusHttp != 200
     }
 }
 
-funcao criarResposta() {
+funcao criarResposta(): Resposta {
     retorna Resposta()
 }

@@ -21,8 +21,9 @@
 //                                 (padrão: "liquido", o pacote instalado pela Pacoteca).
 //
 // Para executar o programa gerado, o Líquido usa o comando da variável de ambiente
-// LIQUIDO_INTERPRETADOR (padrão: `delegua`). Se ela apontar para um arquivo `.js`,
-// ele é executado com `node`.
+// LIQUIDO_INTERPRETADOR; sem ela, o `deldel` (interpretador de Delégua escrito em Delégua,
+// do delegua-delegua) se estiver no PATH, e senão o `delegua`. Se a variável apontar para
+// um arquivo `.js`, ele é executado com `node`.
 importar tudo como argumentos de "argumentos"
 importar tudo como arquivos de "arquivos"
 importar tudo como processo de "processo"
@@ -69,10 +70,33 @@ funcao gerar(diretorio) {
 }
 
 // Executa o programa gerado com o interpretador configurado. Devolve o código de saída.
+// Caminho de um executável no PATH (também com `.exe`), ou "".
+funcao encontrarNoPath(nome) {
+    var caminhos = processo.variavelAmbiente("PATH")
+    se (caminhos == nulo ou caminhos == "") { retorna "" }
+    var separador = ":"
+    se (caminhos.inclui(";")) { separador = ";" }
+    para cada diretorio em caminhos.dividir(separador) {
+        se (diretorio != "") {
+            var candidato = arquivos.juntarCaminhos(diretorio, nome)
+            se (arquivos.eArquivo(candidato)) { retorna candidato }
+            se (arquivos.eArquivo(candidato + ".exe")) { retorna candidato + ".exe" }
+        }
+    }
+    retorna ""
+}
+
+funcao interpretadorPadrao() {
+    var configurado = processo.variavelAmbiente("LIQUIDO_INTERPRETADOR")
+    se (configurado != nulo e configurado != "") { retorna configurado }
+    var deldel = encontrarNoPath("deldel")
+    se (deldel != "") { retorna deldel }
+    retorna "delegua"
+}
+
 funcao executarPrograma(caminhoRelativo, diretorio) {
     var caminhoPrograma = arquivos.caminhoAbsoluto(caminhoRelativo)
-    var interpretador = processo.variavelAmbiente("LIQUIDO_INTERPRETADOR")
-    se (interpretador == nulo ou interpretador == "") { interpretador = "delegua" }
+    var interpretador = interpretadorPadrao()
     se (textos.terminaCom(interpretador, ".js")) {
         var argumentosNode = [interpretador, caminhoPrograma]
         retorna processo.executar("node", argumentosNode, diretorio)

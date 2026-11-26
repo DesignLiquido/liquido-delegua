@@ -2,16 +2,18 @@
 // as parciais (`<parcial nome="..."/>`), o modelo com os valores da resposta,
 // converte `<estilo>` de FolEs para CSS e, por fim, traduz LMHT para HTML.
 importar tudo como arquivos de "arquivos"
-importar tudo como lmht de "lmht"
-importar tudo como foles de "foles"
-importar tudo como textos de "../utilidades/texto.delegua"
-importar tudo como modelos de "./modelos.delegua"
+importar { converter_lmht_para_html } de "lmht"
+importar { converter_texto_para_css } de "foles"
+importar { comecaCom, ehEspaco, encontrarAPartir, substituirTodos, terminaCom } de "../utilidades/texto.delegua"
+importar { renderizar } de "./modelos.delegua"
 
-var nomeArquivoLeiaute = "base.lmht"
+funcao obterNomeArquivoLeiaute(): texto {
+    retorna "base.lmht"
+}
 
 // Remove os segmentos `:parametro` do caminho da rota. "/clientes/:id/notas" -> "clientes/notas".
-funcao caminhoSemParametros(caminhoRota) {
-    var segmentos = []
+funcao caminhoSemParametros(caminhoRota: texto): texto {
+    var segmentos: texto[] = []
     para cada segmento em ("" + caminhoRota).dividir("/") {
         se (segmento == "" ou segmento[0] == ":") { continua }
         segmentos.adicionar(segmento)
@@ -19,27 +21,27 @@ funcao caminhoSemParametros(caminhoRota) {
     retorna segmentos.juntar("/")
 }
 
-funcao ultimaParteEhParametro(caminhoRota) {
-    var segmentos = []
+funcao ultimaParteEhParametro(caminhoRota: texto): lógico {
+    var segmentos: texto[] = []
     para cada segmento em ("" + caminhoRota).dividir("/") {
         se (segmento != "") { segmentos.adicionar(segmento) }
     }
     se (segmentos.tamanho() == 0) { retorna falso }
-    var ultimo = segmentos[segmentos.tamanho() - 1]
+    var ultimo: texto = segmentos[segmentos.tamanho() - 1]
     retorna ultimo[0] == ":"
 }
 
 // Resolve o arquivo de visão para o caminho da rota, como no Líquido original:
 // `/x` -> `visoes/x.lmht` ou `visoes/x/inicial.lmht`; `/x/:id` -> `visoes/x/detalhes.lmht`.
 // Devolve { "visao": caminho ou nulo, "tentados": [..] }.
-funcao resolverVisao(diretorioBase, caminhoRota) {
-    var diretorioVisoes = arquivos.juntarCaminhos(diretorioBase, "visoes")
-    var semParametros = caminhoSemParametros(caminhoRota)
-    var diretorioOuArquivo = diretorioVisoes
+funcao resolverVisao(diretorioBase: texto, caminhoRota: texto): dicionário {
+    var diretorioVisoes: texto = arquivos.juntarCaminhos(diretorioBase, "visoes")
+    var semParametros: texto = caminhoSemParametros(caminhoRota)
+    var diretorioOuArquivo: texto = diretorioVisoes
     se (semParametros != "") { diretorioOuArquivo = arquivos.juntarCaminhos(diretorioVisoes, semParametros) }
-    var tentados = []
+    var tentados: texto[] = []
 
-    var visao = ""
+    var visao: texto = ""
     se (ultimaParteEhParametro(caminhoRota)) {
         visao = arquivos.juntarCaminhos(diretorioOuArquivo, "detalhes.lmht")
     } senao se (semParametros == "") {
@@ -52,7 +54,7 @@ funcao resolverVisao(diretorioBase, caminhoRota) {
     se (arquivos.eArquivo(visao)) {
         retorna { "visao": visao, "tentados": tentados }
     }
-    var inicial = arquivos.juntarCaminhos(diretorioOuArquivo, "inicial.lmht")
+    var inicial: texto = arquivos.juntarCaminhos(diretorioOuArquivo, "inicial.lmht")
     se (nao tentados.inclui(inicial)) { tentados.adicionar(inicial) }
     se (arquivos.eArquivo(inicial)) {
         retorna { "visao": inicial, "tentados": tentados }
@@ -61,14 +63,15 @@ funcao resolverVisao(diretorioBase, caminhoRota) {
 }
 
 // Procura `base.lmht` no diretório da visão e nos diretórios acima, até `visoes/`.
-funcao resolverLeiaute(diretorioBase, caminhoVisao) {
-    var diretorioVisoes = arquivos.caminhoAbsoluto(arquivos.juntarCaminhos(diretorioBase, "visoes"))
-    var visaoAbsoluta = arquivos.caminhoAbsoluto(caminhoVisao)
-    var diretorioAtual = arquivos.diretorioPai(visaoAbsoluta)
-    var limite = 64
-    enquanto (limite > 0 e textos.comecaCom(diretorioAtual, diretorioVisoes)) {
+funcao resolverLeiaute(diretorioBase: texto, caminhoVisao: texto): texto {
+    var diretorioVisoes: texto = arquivos.caminhoAbsoluto(arquivos.juntarCaminhos(diretorioBase, "visoes"))
+    var visaoAbsoluta: texto = arquivos.caminhoAbsoluto(caminhoVisao)
+    var diretorioAtual: texto = arquivos.diretorioPai(visaoAbsoluta)
+    var nomeArquivoLeiaute: texto = obterNomeArquivoLeiaute()
+    var limite: inteiro = 64
+    enquanto (limite > 0 e comecaCom(diretorioAtual, diretorioVisoes)) {
         limite = limite - 1
-        var candidato = arquivos.juntarCaminhos(diretorioAtual, nomeArquivoLeiaute)
+        var candidato: texto = arquivos.juntarCaminhos(diretorioAtual, nomeArquivoLeiaute)
         se (candidato != visaoAbsoluta e arquivos.eArquivo(candidato)) {
             retorna candidato
         }
@@ -80,19 +83,19 @@ funcao resolverLeiaute(diretorioBase, caminhoVisao) {
 
 // Conteúdo interno da primeira marcação `<nome>...</nome>`, aceitando atributos na abertura.
 // Devolve { "encontrado", "inicio", "fim", "interno" } (inicio/fim delimitam a marcação inteira).
-funcao localizarMarcacao(conteudo, nome) {
-    var textoConteudo = "" + conteudo
-    var procurar = 0
+funcao localizarMarcacao(conteudo: texto, nome: texto): dicionário {
+    var textoConteudo: texto = "" + conteudo
+    var procurar: inteiro = 0
     enquanto (procurar < textoConteudo.tamanho()) {
-        var abertura = textos.encontrarAPartir(textoConteudo, "<" + nome, procurar)
+        var abertura: inteiro = encontrarAPartir(textoConteudo, "<" + nome, procurar)
         se (abertura < 0) { sustar }
-        var depoisNome = abertura + nome.tamanho() + 1
+        var depoisNome: inteiro = abertura + nome.tamanho() + 1
         se (depoisNome >= textoConteudo.tamanho()) { sustar }
-        var seguinte = textoConteudo[depoisNome]
-        se (seguinte == ">" ou textos.ehEspaco(seguinte)) {
-            var fimAbertura = textos.encontrarAPartir(textoConteudo, ">", depoisNome)
+        var seguinte: texto = textoConteudo[depoisNome]
+        se (seguinte == ">" ou ehEspaco(seguinte)) {
+            var fimAbertura: inteiro = encontrarAPartir(textoConteudo, ">", depoisNome)
             se (fimAbertura < 0) { sustar }
-            var fechamento = textos.encontrarAPartir(textoConteudo, "</" + nome + ">", fimAbertura + 1)
+            var fechamento: inteiro = encontrarAPartir(textoConteudo, "</" + nome + ">", fimAbertura + 1)
             se (fechamento < 0) { sustar }
             retorna {
                 "encontrado": verdadeiro,
@@ -108,20 +111,20 @@ funcao localizarMarcacao(conteudo, nome) {
     retorna { "encontrado": falso, "inicio": -1, "fim": -1, "inicioInterno": -1, "fimInterno": -1, "interno": "" }
 }
 
-funcao localizarCabeca(conteudo) {
+funcao localizarCabeca(conteudo: texto): dicionário {
     var cabeca: dicionário = localizarMarcacao(conteudo, "cabeca")
     se (cabeca["encontrado"]) { retorna cabeca }
     retorna localizarMarcacao(conteudo, "cabeça")
 }
 
 // Posição e tamanho do marcador `<conteudo/>` (aceita espaços antes de `/>`), ou inicio -1.
-funcao localizarMarcadorConteudo(conteudo) {
-    var procurar = 0
+funcao localizarMarcadorConteudo(conteudo: texto): dicionário {
+    var procurar: inteiro = 0
     enquanto (procurar < conteudo.tamanho()) {
-        var abertura = textos.encontrarAPartir(conteudo, "<conteudo", procurar)
+        var abertura: inteiro = encontrarAPartir(conteudo, "<conteudo", procurar)
         se (abertura < 0) { sustar }
-        var posicao = abertura + 9
-        enquanto (posicao < conteudo.tamanho() e textos.ehEspaco(conteudo[posicao])) { posicao = posicao + 1 }
+        var posicao: inteiro = abertura + 9
+        enquanto (posicao < conteudo.tamanho() e ehEspaco(conteudo[posicao])) { posicao = posicao + 1 }
         se (conteudo.subtexto(posicao, posicao + 2) == "/>") {
             retorna { "inicio": abertura, "fim": posicao + 2 }
         }
@@ -132,27 +135,31 @@ funcao localizarMarcadorConteudo(conteudo) {
 
 // Insere o corpo da página no `<conteudo/>` do leiaute e acrescenta a cabeça da página à do leiaute.
 // Devolve { "resultado", "erro" }.
-funcao comporComLeiaute(textoLeiaute, textoPagina, caminhoLeiaute) {
+funcao comporComLeiaute(textoLeiaute: texto, textoPagina: texto, caminhoLeiaute: texto): dicionário {
     var marcador: dicionário = localizarMarcadorConteudo(textoLeiaute)
-    se (marcador["inicio"] < 0) {
+    var inicioMarcador: inteiro = marcador["inicio"]
+    var fimMarcador: inteiro = marcador["fim"]
+    se (inicioMarcador < 0) {
         retorna {
             "resultado": "",
             "erro": "O arquivo de leiaute '" + caminhoLeiaute + "' não contém o marcador '<conteudo/>' onde o conteúdo da visão deveria ser inserido."
         }
     }
     var corpoPagina: dicionário = localizarMarcacao(textoPagina, "corpo")
-    var internoCorpo = corpoPagina["interno"]
-    var composto = textoLeiaute.subtexto(0, marcador["inicio"]) + internoCorpo + textoLeiaute.subtexto(marcador["fim"], textoLeiaute.tamanho())
+    var internoCorpo: texto = corpoPagina["interno"]
+    var composto: texto = textoLeiaute.subtexto(0, inicioMarcador) + internoCorpo + textoLeiaute.subtexto(fimMarcador, textoLeiaute.tamanho())
 
     var cabecaPagina: dicionário = localizarCabeca(textoPagina)
-    se (cabecaPagina["encontrado"] e cabecaPagina["interno"].aparar() != "") {
+    var internoCabecaPagina: texto = cabecaPagina["interno"]
+    se (cabecaPagina["encontrado"] e internoCabecaPagina.aparar() != "") {
         var cabecaLeiaute: dicionário = localizarCabeca(composto)
         se (cabecaLeiaute["encontrado"]) {
-            composto = composto.subtexto(0, cabecaLeiaute["fimInterno"]) + cabecaPagina["interno"] + composto.subtexto(cabecaLeiaute["fimInterno"], composto.tamanho())
+            var fimInternoLeiaute: inteiro = cabecaLeiaute["fimInterno"]
+            composto = composto.subtexto(0, fimInternoLeiaute) + internoCabecaPagina + composto.subtexto(fimInternoLeiaute, composto.tamanho())
         } senao {
-            var posicaoLmht = composto.encontrar("<lmht>")
+            var posicaoLmht: inteiro = composto.encontrar("<lmht>")
             se (posicaoLmht >= 0) {
-                composto = composto.subtexto(0, posicaoLmht + 6) + "<cabeca>" + cabecaPagina["interno"] + "</cabeca>" + composto.subtexto(posicaoLmht + 6, composto.tamanho())
+                composto = composto.subtexto(0, posicaoLmht + 6) + "<cabeca>" + internoCabecaPagina + "</cabeca>" + composto.subtexto(posicaoLmht + 6, composto.tamanho())
             }
         }
     }
@@ -160,38 +167,38 @@ funcao comporComLeiaute(textoLeiaute, textoPagina, caminhoLeiaute) {
 }
 
 // Substitui `<parcial nome="x"/>` (ou `<parcial nome="x"></parcial>`) pelo conteúdo de `visoes/parciais/x.lmht`.
-funcao aplicarParciais(diretorioBase, conteudo) {
-    var resultado = ""
-    var restante = "" + conteudo
-    var diretorioParciais = arquivos.juntarCaminhos(arquivos.juntarCaminhos(diretorioBase, "visoes"), "parciais")
-    var limite = 1000
+funcao aplicarParciais(diretorioBase: texto, conteudo: texto): dicionário {
+    var resultado: texto = ""
+    var restante: texto = "" + conteudo
+    var diretorioParciais: texto = arquivos.juntarCaminhos(arquivos.juntarCaminhos(diretorioBase, "visoes"), "parciais")
+    var limite: inteiro = 1000
     enquanto (limite > 0) {
         limite = limite - 1
-        var abertura = restante.encontrar("<parcial")
+        var abertura: inteiro = restante.encontrar("<parcial")
         se (abertura < 0) { sustar }
-        var fimAbertura = textos.encontrarAPartir(restante, ">", abertura)
+        var fimAbertura: inteiro = encontrarAPartir(restante, ">", abertura)
         se (fimAbertura < 0) {
             retorna { "resultado": "", "erro": "Estrutura parcial não terminada." }
         }
-        var marcacao = restante.subtexto(abertura, fimAbertura + 1)
-        var fimTotal = fimAbertura + 1
-        se (nao textos.terminaCom(marcacao, "/>")) {
-            var fechamento = textos.encontrarAPartir(restante, "</parcial>", fimAbertura)
+        var marcacao: texto = restante.subtexto(abertura, fimAbertura + 1)
+        var fimTotal: inteiro = fimAbertura + 1
+        se (nao terminaCom(marcacao, "/>")) {
+            var fechamento: inteiro = encontrarAPartir(restante, "</parcial>", fimAbertura)
             se (fechamento < 0) {
                 retorna { "resultado": "", "erro": "Estrutura parcial sem fechamento." }
             }
             fimTotal = fechamento + 10
         }
-        var posicaoNome = marcacao.encontrar("nome=\"")
+        var posicaoNome: inteiro = marcacao.encontrar("nome=\"")
         se (posicaoNome < 0) {
             retorna { "resultado": "", "erro": "Na estrutura parcial, o atributo 'nome' não foi informado." }
         }
-        var fimNome = textos.encontrarAPartir(marcacao, "\"", posicaoNome + 6)
-        var nome = marcacao.subtexto(posicaoNome + 6, fimNome)
+        var fimNome: inteiro = encontrarAPartir(marcacao, "\"", posicaoNome + 6)
+        var nome: texto = marcacao.subtexto(posicaoNome + 6, fimNome)
         se (nao arquivos.eDiretorio(diretorioParciais)) {
             retorna { "resultado": "", "erro": "O diretório 'visoes/parciais' não foi encontrado." }
         }
-        var conteudoParcial = arquivos.lerTexto(arquivos.juntarCaminhos(diretorioParciais, nome + ".lmht"))
+        var conteudoParcial: texto = arquivos.lerTexto(arquivos.juntarCaminhos(diretorioParciais, nome + ".lmht"))
         se (conteudoParcial == nulo) {
             retorna { "resultado": "", "erro": "O arquivo '" + nome + ".lmht' não foi encontrado." }
         }
@@ -203,45 +210,49 @@ funcao aplicarParciais(diretorioBase, conteudo) {
 
 // Converte o conteúdo de cada `<estilo>` de FolEs para CSS, trocando a estrutura por `<style>`,
 // como no Líquido original (o tradutor LMHT mantém `<estilo>` como está dentro de `<cabeca>`).
-funcao aplicar_folEs(conteudo) {
-    var resultado = ""
-    var restante = "" + conteudo
-    var limite = 1000
+funcao aplicar_folEs(conteudo: texto): texto {
+    var resultado: texto = ""
+    var restante: texto = "" + conteudo
+    var limite: inteiro = 1000
     enquanto (limite > 0) {
         limite = limite - 1
         var estilo: dicionário = localizarMarcacao(restante, "estilo")
         se (nao estilo["encontrado"]) { sustar }
-        var css = ""
+        var css: texto = ""
         tente {
-            css = foles.converter_texto_para_css(estilo["interno"])
+            css = converter_texto_para_css(estilo["interno"])
         } pegue (erro) {
             escreva("[Liquido] Erro ao processar estilo no LMHT: " + erro.mensagem + ". O estilo será ignorado, mas a página continuará sendo renderizada.")
         }
-        resultado = resultado + restante.subtexto(0, estilo["inicio"]) + "<style>\n" + css + "\n</style>"
-        restante = restante.subtexto(estilo["fim"], restante.tamanho())
+        var inicioEstilo: inteiro = estilo["inicio"]
+        var fimEstilo: inteiro = estilo["fim"]
+        resultado = resultado + restante.subtexto(0, inicioEstilo) + "<style>\n" + css + "\n</style>"
+        restante = restante.subtexto(fimEstilo, restante.tamanho())
     }
     retorna resultado + restante
 }
 
 // Formata a visão da rota. Devolve { "resultado": html, "erro": "" }.
-funcao formatar(diretorioBase, caminhoRota, valores) {
+funcao formatar(diretorioBase: texto, caminhoRota: texto, valores: qualquer): dicionário {
     var resolucao: dicionário = resolverVisao(diretorioBase, caminhoRota)
-    se (resolucao["visao"] == nulo) {
+    var caminhoVisao: texto = resolucao["visao"]
+    se (caminhoVisao == nulo) {
+        var tentados: texto[] = resolucao["tentados"]
         retorna {
             "resultado": "",
-            "erro": "Visão correspondente à rota " + caminhoRota + " não existe. Caminhos tentados: " + resolucao["tentados"].juntar("; ") + "; "
+            "erro": "Visão correspondente à rota " + caminhoRota + " não existe. Caminhos tentados: " + tentados.juntar("; ") + "; "
         }
     }
-    var textoBase = arquivos.lerTexto(resolucao["visao"])
+    var textoBase: texto = arquivos.lerTexto(caminhoVisao)
     se (textoBase == nulo) {
-        retorna { "resultado": "", "erro": "Não foi possível ler a visão " + resolucao["visao"] + "." }
+        retorna { "resultado": "", "erro": "Não foi possível ler a visão " + caminhoVisao + "." }
     }
-    textoBase = textos.substituirTodos(textoBase, "\r\n", "\n")
+    textoBase = substituirTodos(textoBase, "\r\n", "\n")
 
-    var caminhoLeiaute = resolverLeiaute(diretorioBase, resolucao["visao"])
+    var caminhoLeiaute: texto = resolverLeiaute(diretorioBase, caminhoVisao)
     se (caminhoLeiaute != nulo) {
-        var textoLeiaute = arquivos.lerTexto(caminhoLeiaute)
-        var composicao: dicionário = comporComLeiaute(textos.substituirTodos(textoLeiaute, "\r\n", "\n"), textoBase, caminhoLeiaute)
+        var textoLeiaute: texto = arquivos.lerTexto(caminhoLeiaute)
+        var composicao: dicionário = comporComLeiaute(substituirTodos(textoLeiaute, "\r\n", "\n"), textoBase, caminhoLeiaute)
         se (composicao["erro"] != "") { retorna composicao }
         textoBase = composicao["resultado"]
     }
@@ -250,11 +261,11 @@ funcao formatar(diretorioBase, caminhoRota, valores) {
     se (parciais["erro"] != "") { retorna parciais }
     textoBase = parciais["resultado"]
 
-    var renderizado = modelos.renderizar(textoBase, valores)
+    var renderizado: dicionário = renderizar(textoBase, valores)
     se (renderizado["erro"] != "") {
-        retorna { "resultado": "", "erro": "Erro no modelo da visão " + resolucao["visao"] + ": " + renderizado["erro"] }
+        retorna { "resultado": "", "erro": "Erro no modelo da visão " + caminhoVisao + ": " + renderizado["erro"] }
     }
     textoBase = aplicar_folEs(renderizado["resultado"])
 
-    retorna { "resultado": lmht.converter_lmht_para_html(textoBase), "erro": "" }
+    retorna { "resultado": converter_lmht_para_html(textoBase), "erro": "" }
 }

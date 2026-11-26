@@ -1,25 +1,25 @@
 // Tratamento de alvos de requisição HTTP: caminho, parâmetros de pesquisa e codificação.
 importar tudo como rede de "rede"
-importar tudo como textos de "../utilidades/texto.delegua"
+importar { dividirPrimeira } de "../utilidades/texto.delegua"
 
-funcao decodificar(componente) {
+funcao decodificar(componente: texto): texto {
     se (componente == nulo) { retorna "" }
-    var decodificado = rede.decodificarComponenteUrl("" + componente)
+    var decodificado: texto = rede.decodificarComponenteUrl("" + componente)
     se (decodificado == nulo) { retorna "" + componente }
     retorna decodificado
 }
 
-funcao codificar(componente) {
+funcao codificar(componente: texto): texto {
     se (componente == nulo) { retorna "" }
     retorna rede.codificarComponenteUrl("" + componente)
 }
 
 // Separa "/caminho?a=1#x" em { "caminho": "/caminho", "consulta": "a=1" }.
-funcao separarAlvo(alvo) {
-    var textoAlvo = "" + alvo
-    var posicaoFragmento = textoAlvo.encontrar("#")
+funcao separarAlvo(alvo: texto): dicionário {
+    var textoAlvo: texto = "" + alvo
+    var posicaoFragmento: inteiro = textoAlvo.encontrar("#")
     se (posicaoFragmento >= 0) { textoAlvo = textoAlvo.subtexto(0, posicaoFragmento) }
-    var posicaoConsulta = textoAlvo.encontrar("?")
+    var posicaoConsulta: inteiro = textoAlvo.encontrar("?")
     se (posicaoConsulta < 0) {
         retorna { "caminho": textoAlvo, "consulta": "" }
     }
@@ -30,22 +30,25 @@ funcao separarAlvo(alvo) {
 }
 
 // Analisa "a=1&b=dois&b=tres" em um dicionário. Chaves repetidas viram vetores, como no Express.
-funcao analisarConsulta(consulta) {
-    var resultado = {}
+funcao analisarConsulta(consulta: texto): dicionário {
+    var resultado: dicionário = {}
     se (consulta == nulo ou consulta == "") { retorna resultado }
-    para cada par em ("" + consulta).dividir("&") {
+    var pares: texto[] = ("" + consulta).dividir("&")
+    para (var indicePar: inteiro = 0; indicePar < pares.tamanho(); indicePar = indicePar + 1) {
+        var par: texto = pares[indicePar]
         se (par == "") { continua }
-        var partes = textos.dividirPrimeira(par, "=")
-        var chave = decodificar(partes[0])
-        var valorPar = ""
+        var partes: texto[] = dividirPrimeira(par, "=")
+        var chave: texto = decodificar(partes[0])
+        var valorPar: texto = ""
         se (partes.tamanho() > 1) { valorPar = decodificar(partes[1]) }
         se (resultado.contem(chave)) {
             var existente = resultado[chave]
-            var tipoExistente = tipo de existente
+            var tipoExistente: texto = tipo de existente
             se (tipoExistente == "vetor") {
-                existente.adicionar(valorPar)
+                var listaExistente: vetor = existente
+                listaExistente.adicionar(valorPar)
             } senao {
-                var lista = [existente, valorPar]
+                var lista: texto[] = ["" + existente, valorPar]
                 resultado[chave] = lista
             }
         } senao {
@@ -56,8 +59,8 @@ funcao analisarConsulta(consulta) {
 }
 
 // Normaliza o caminho: decodifica, remove barras repetidas e a barra final (exceto na raiz).
-funcao normalizarCaminho(caminho) {
-    var segmentos = []
+funcao normalizarCaminho(caminho: texto): texto {
+    var segmentos: texto[] = []
     para cada segmento em ("" + caminho).dividir("/") {
         se (segmento != "") { segmentos.adicionar(segmento) }
     }
@@ -65,11 +68,11 @@ funcao normalizarCaminho(caminho) {
 }
 
 // Segmentos decodificados de um caminho. Recusa segmentos "." e ".." (devolve nulo).
-funcao segmentosCaminho(caminho) {
-    var segmentos = []
+funcao segmentosCaminho(caminho: texto): texto[] {
+    var segmentos: texto[] = []
     para cada segmento em ("" + caminho).dividir("/") {
         se (segmento == "") { continua }
-        var decodificado = decodificar(segmento)
+        var decodificado: texto = decodificar(segmento)
         se (decodificado == "." ou decodificado == ".." ou decodificado.inclui("/") ou decodificado.inclui("\\")) {
             retorna nulo
         }
